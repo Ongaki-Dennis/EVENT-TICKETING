@@ -1,27 +1,27 @@
 {
-  "name": "guessing-game",
+  "name": "restaurant-chatbot",
   "version": "1.0.0",
-  "description": "Live multiplayer guessing game with rotating game master rounds and score tracking.",
+  "description": "Restaurant ordering chatbot with device sessions, order history, and Paystack test checkout.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js"
   },
   "keywords": [
-    "guessing-game",
-    "multiplayer",
-    "game-session",
+    "restaurant",
+    "chatbot",
+    "orders",
+    "paystack",
     "express",
     "chat-ui"
   ],
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": "24.x"
+    "node": ">=18"
   },
   "dependencies": {
     "dotenv": "^17.4.2",
-    "express": "^4.21.2",
-    "nodemailer": "^8.0.5"
+    "express": "^4.21.2"
   }
 }

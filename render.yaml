@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: birthday-reminder-app
+    name: restaurant-chatbot
     env: node
     plan: starter
     buildCommand: npm install
@@ -14,7 +14,9 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: TZ
-        value: Africa/Nairobi
       - key: DATA_DIR
         value: /opt/render/project/src/data
+      - key: PAYSTACK_CURRENCY
+        value: NGN
+      - key: PAYSTACK_SECRET_KEY
+        sync: false

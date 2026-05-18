@@ -1,77 +1,70 @@
-const STORAGE_KEY = "guessing-game-player";
+const DEVICE_KEY = "amsterdon-device-id";
+const EMAIL_KEY = "amsterdon-payment-email";
+const CURRENCY_KEY = "amsterdon-currency";
 
 const state = {
-  sessionId: "",
-  playerId: "",
-  displayName: "",
+  deviceId: "",
   session: null,
-  pollTimer: null
+  paymentOrderId: ""
 };
 
-const createForm = document.querySelector("#create-form");
-const joinForm = document.querySelector("#join-form");
-const createNameInput = document.querySelector("#create-name");
-const joinCodeInput = document.querySelector("#join-code");
-const joinNameInput = document.querySelector("#join-name");
-const entryFeedback = document.querySelector("#entry-feedback");
-const sessionFeedback = document.querySelector("#session-feedback");
-const sessionTitle = document.querySelector("#session-title");
-const sessionMeta = document.querySelector("#session-meta");
-const leaveButton = document.querySelector("#leave-button");
-const playerCount = document.querySelector("#player-count");
-const playersList = document.querySelector("#players-list");
-const masterControls = document.querySelector("#master-controls");
-const questionForm = document.querySelector("#question-form");
-const questionInput = document.querySelector("#question-input");
-const answerInput = document.querySelector("#answer-input");
-const startButton = document.querySelector("#start-button");
-const masterName = document.querySelector("#master-name");
-const roundTitle = document.querySelector("#round-title");
-const roundStatus = document.querySelector("#round-status");
-const countdownPill = document.querySelector("#countdown-pill");
-const chatFeed = document.querySelector("#chat-feed");
-const guessForm = document.querySelector("#guess-form");
-const guessInput = document.querySelector("#guess-input");
+const messagesEl = document.querySelector("#messages");
+const chatForm = document.querySelector("#chat-form");
+const messageInput = document.querySelector("#message-input");
+const currentOrderEl = document.querySelector("#current-order");
+const orderHistoryEl = document.querySelector("#order-history");
+const paymentDialog = document.querySelector("#payment-dialog");
+const paymentForm = document.querySelector("#payment-form");
+const paymentSummary = document.querySelector("#payment-summary");
+const paymentEmail = document.querySelector("#payment-email");
+const cancelPayment = document.querySelector("#cancel-payment");
+const paymentBanner = document.querySelector("#payment-banner");
+const currencySelect = document.querySelector("#currency-select");
 
-function loadStoredIdentity() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    state.sessionId = saved.sessionId || "";
-    state.playerId = saved.playerId || "";
-    state.displayName = saved.displayName || "";
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
+function getDeviceId() {
+  const params = new URLSearchParams(window.location.search);
+  const queryDeviceId = params.get("deviceId");
+
+  if (queryDeviceId) {
+    localStorage.setItem(DEVICE_KEY, queryDeviceId);
+    return queryDeviceId;
   }
+
+  const saved = localStorage.getItem(DEVICE_KEY);
+
+  if (saved) {
+    return saved;
+  }
+
+  const created = `device_${crypto.randomUUID().replaceAll("-", "")}`;
+  localStorage.setItem(DEVICE_KEY, created);
+  return created;
 }
 
-function saveStoredIdentity() {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify({
-      sessionId: state.sessionId,
-      playerId: state.playerId,
-      displayName: state.displayName
-    })
-  );
+function selectedCurrency() {
+  return state.session?.supportedCurrencies?.find((entry) => entry.code === state.session.currency);
 }
 
-function clearStoredIdentity() {
-  state.sessionId = "";
-  state.playerId = "";
-  state.displayName = "";
-  state.session = null;
-  localStorage.removeItem(STORAGE_KEY);
+function convertFromNgn(amount) {
+  const currency = selectedCurrency();
+  return Math.round(amount * (currency?.rateFromNgn || 1) * 100) / 100;
 }
 
-function showFeedback(target, message, type = "success") {
-  target.hidden = false;
-  target.textContent = message;
-  target.className = `feedback ${type}`;
+function formatMoney(amount) {
+  const currency = selectedCurrency() || { code: "NGN", locale: "en-NG" };
+
+  return new Intl.NumberFormat(currency.locale, {
+    style: "currency",
+    currency: currency.code,
+    maximumFractionDigits: currency.code === "NGN" ? 0 : 2
+  }).format(convertFromNgn(amount));
 }
 
-function hideFeedback(target) {
-  target.hidden = true;
-  target.textContent = "";
+function formatDate(value) {
+  return new Date(value).toLocaleString([], {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
 }
 
 async function request(url, options = {}) {
@@ -85,366 +78,271 @@ async function request(url, options = {}) {
   return data;
 }
 
-function isViewerGameMaster() {
-  return Boolean(state.session?.viewer?.isGameMaster);
-}
+function showPaymentBanner() {
+  const params = new URLSearchParams(window.location.search);
+  const payment = params.get("payment");
 
-function formatTimeLeft(expiresAt) {
-  if (!expiresAt) {
-    return "--";
+  if (!payment) {
+    return;
   }
 
-  const remainingMs = Math.max(0, new Date(expiresAt).getTime() - Date.now());
-  const seconds = Math.ceil(remainingMs / 1000);
-  return `${seconds}s`;
+  paymentBanner.hidden = false;
+  paymentBanner.className = `payment-banner ${payment === "success" ? "success" : "error"}`;
+  paymentBanner.textContent =
+    payment === "success"
+      ? "Payment successful. Your chat has been updated."
+      : "Payment was not completed. You can try again from your order history.";
+
+  window.history.replaceState({}, "", window.location.pathname);
 }
 
-function createPlayerCard(player) {
-  const card = document.createElement("article");
-  card.className = "player-card";
-
-  const top = document.createElement("div");
-  top.className = "player-row";
-
-  const name = document.createElement("strong");
-  name.textContent = player.displayName;
-
-  const role = document.createElement("span");
-  role.className = "tag";
-  role.textContent = player.isGameMaster ? "Game master" : "Player";
-
-  top.append(name, role);
-
-  const score = document.createElement("p");
-  score.textContent = `${player.score} point${player.score === 1 ? "" : "s"}`;
-
-  card.append(top, score);
-  return card;
-}
-
-function createMessageBubble(event) {
-  const bubble = document.createElement("article");
-  bubble.className = `message-bubble ${event.type === "guess" ? "guess" : "system"}`;
+function createMessage(message) {
+  const article = document.createElement("article");
+  article.className = `message ${message.sender}`;
 
   const text = document.createElement("p");
-  text.textContent = event.message;
+  text.textContent = message.text;
 
-  const time = document.createElement("span");
-  time.textContent = new Date(event.createdAt).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit"
+  const time = document.createElement("time");
+  time.dateTime = message.createdAt;
+  time.textContent = formatDate(message.createdAt);
+
+  article.append(text, time);
+
+  if (message.sender === "bot" && message.orderId && message.paymentStatus !== "paid") {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "pay-button";
+    button.textContent = "Pay with Paystack";
+    button.addEventListener("click", () => openPaymentDialog(message.orderId));
+    article.append(button);
+  }
+
+  return article;
+}
+
+function renderMessages() {
+  messagesEl.replaceChildren();
+
+  const fragment = document.createDocumentFragment();
+  for (const message of state.session.messages) {
+    fragment.append(createMessage(message));
+  }
+  messagesEl.append(fragment);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function renderCurrencySelect() {
+  currencySelect.replaceChildren();
+
+  for (const currency of state.session.supportedCurrencies || []) {
+    const option = document.createElement("option");
+    option.value = currency.code;
+    option.textContent = `${currency.country} (${currency.code})`;
+    currencySelect.append(option);
+  }
+
+  currencySelect.value = state.session.currency;
+  localStorage.setItem(CURRENCY_KEY, state.session.currency);
+}
+
+function emptyState(text) {
+  const div = document.createElement("div");
+  div.className = "empty-state";
+  div.textContent = text;
+  return div;
+}
+
+function renderCurrentOrder() {
+  currentOrderEl.replaceChildren();
+  const order = state.session.currentOrder;
+
+  if (!order.length) {
+    currentOrderEl.append(emptyState("No active order."));
+    return;
+  }
+
+  for (const item of order) {
+    const row = document.createElement("article");
+    row.className = "order-row";
+    row.innerHTML = `
+      <div>
+        <strong></strong>
+        <span></span>
+      </div>
+      <b></b>
+    `;
+    row.querySelector("strong").textContent = item.name;
+    row.querySelector("span").textContent = item.scheduledFor
+      ? `${item.optionLabel} - scheduled ${formatDate(item.scheduledFor)}`
+      : item.optionLabel;
+    row.querySelector("b").textContent = formatMoney(item.price);
+    currentOrderEl.append(row);
+  }
+
+  const total = document.createElement("div");
+  total.className = "order-total";
+  total.innerHTML = `<span>Total</span><strong>${formatMoney(state.session.totals.currentOrder)}</strong>`;
+  currentOrderEl.append(total);
+}
+
+function renderHistory() {
+  orderHistoryEl.replaceChildren();
+  const orders = state.session.placedOrders;
+
+  if (!orders.length) {
+    orderHistoryEl.append(emptyState("Placed orders will appear here."));
+    return;
+  }
+
+  for (const order of orders.slice().reverse()) {
+    const card = document.createElement("article");
+    card.className = "history-card";
+
+    const items = order.items
+      .map((item) => `<li>${item.name} ${item.optionLabel}</li>`)
+      .join("");
+    card.innerHTML = `
+      <div class="history-top">
+        <strong></strong>
+        <span class="payment-status"></span>
+      </div>
+      <ul>${items}</ul>
+      <div class="history-bottom">
+        <b></b>
+      </div>
+    `;
+    card.querySelector("strong").textContent = order.code;
+    card.querySelector(".payment-status").textContent = order.paymentStatus;
+    card.querySelector("b").textContent = formatMoney(order.total);
+
+    if (order.paymentStatus !== "paid") {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "pay-button compact";
+      button.textContent = "Pay";
+      button.addEventListener("click", () => openPaymentDialog(order.id));
+      card.querySelector(".history-bottom").append(button);
+    }
+
+    orderHistoryEl.append(card);
+  }
+}
+
+function render() {
+  if (!state.session) {
+    return;
+  }
+
+  renderMessages();
+  renderCurrencySelect();
+  renderCurrentOrder();
+  renderHistory();
+}
+
+async function loadChat() {
+  const data = await request(`/api/chat/${encodeURIComponent(state.deviceId)}`);
+  state.session = data.session;
+
+  const savedCurrency = localStorage.getItem(CURRENCY_KEY);
+  if (
+    savedCurrency &&
+    savedCurrency !== state.session.currency &&
+    state.session.supportedCurrencies.some((entry) => entry.code === savedCurrency)
+  ) {
+    await updateCurrency(savedCurrency);
+    return;
+  }
+
+  render();
+}
+
+async function sendMessage(event) {
+  event.preventDefault();
+  const message = messageInput.value.trim();
+
+  if (!message) {
+    return;
+  }
+
+  messageInput.disabled = true;
+
+  try {
+    const data = await request(`/api/chat/${encodeURIComponent(state.deviceId)}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message })
+    });
+    state.session = data.session;
+    chatForm.reset();
+    render();
+  } catch (error) {
+    addTemporaryBotError(error.message);
+  } finally {
+    messageInput.disabled = false;
+    messageInput.focus();
+  }
+}
+
+function addTemporaryBotError(message) {
+  const article = document.createElement("article");
+  article.className = "message bot error";
+  article.textContent = message;
+  messagesEl.append(article);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function openPaymentDialog(orderId) {
+  const order = state.session.placedOrders.find((entry) => entry.id === orderId);
+
+  if (!order) {
+    return;
+  }
+
+  state.paymentOrderId = orderId;
+  paymentSummary.textContent = `${order.code} - ${formatMoney(order.total)}`;
+  paymentEmail.value = localStorage.getItem(EMAIL_KEY) || "";
+  paymentDialog.showModal();
+}
+
+async function initializePayment(event) {
+  event.preventDefault();
+
+  try {
+    localStorage.setItem(EMAIL_KEY, paymentEmail.value.trim());
+    const data = await request("/api/payments/initialize", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        deviceId: state.deviceId,
+        orderId: state.paymentOrderId,
+        email: paymentEmail.value,
+        currency: state.session.currency
+      })
+    });
+    window.location.href = data.authorizationUrl;
+  } catch (error) {
+    paymentSummary.textContent = error.message;
+  }
+}
+
+async function updateCurrency(currency) {
+  const data = await request(`/api/chat/${encodeURIComponent(state.deviceId)}/currency`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ currency })
   });
-
-  bubble.append(text, time);
-  return bubble;
+  state.session = data.session;
+  render();
 }
 
-function renderPlayers(players) {
-  playerCount.textContent = `${players.length} connected`;
-  playersList.replaceChildren();
+chatForm.addEventListener("submit", sendMessage);
+paymentForm.addEventListener("submit", initializePayment);
+cancelPayment.addEventListener("click", () => paymentDialog.close());
+currencySelect.addEventListener("change", () => {
+  updateCurrency(currencySelect.value).catch((error) => addTemporaryBotError(error.message));
+});
 
-  const fragment = document.createDocumentFragment();
-  for (const player of players) {
-    fragment.append(createPlayerCard(player));
-  }
-  playersList.append(fragment);
-}
-
-function renderChat(events) {
-  chatFeed.replaceChildren();
-
-  if (!events.length) {
-    const empty = document.createElement("article");
-    empty.className = "empty-feed";
-    empty.textContent = "Session activity will appear here.";
-    chatFeed.append(empty);
-    return;
-  }
-
-  const fragment = document.createDocumentFragment();
-  for (const event of events) {
-    fragment.append(createMessageBubble(event));
-  }
-
-  chatFeed.append(fragment);
-  chatFeed.scrollTop = chatFeed.scrollHeight;
-}
-
-function renderRound(session) {
-  const round = session.round;
-  const viewer = session.viewer;
-  const lastRound = session.lastRoundSummary;
-
-  masterName.textContent = `Game master: ${session.gameMasterName || "-"}`;
-
-  if (!round) {
-    if (lastRound) {
-      const winner = session.players.find((player) => player.id === lastRound.winnerPlayerId);
-      roundTitle.textContent = lastRound.question;
-      roundStatus.textContent = winner
-        ? winner.id === viewer?.id
-          ? `You have won. The answer was ${lastRound.answer}.`
-          : `${winner.displayName} won. The answer was ${lastRound.answer}.`
-        : `No winner this round. The answer was ${lastRound.answer}.`;
-    } else {
-      roundTitle.textContent = "Waiting in the lobby";
-      roundStatus.textContent = viewer?.isGameMaster
-        ? "Write the next question and answer, then start when at least 3 players are ready."
-        : "The game master is preparing the next round.";
-    }
-    countdownPill.textContent = "Timer: --";
-    guessInput.disabled = true;
-    guessForm.querySelector("button").disabled = true;
-    return;
-  }
-
-  countdownPill.textContent = `Timer: ${formatTimeLeft(round.expiresAt)}`;
-
-  if (round.status === "draft") {
-    roundTitle.textContent = "Question ready";
-    roundStatus.textContent = viewer?.isGameMaster
-      ? "Your question is saved. Start the round when everyone is in."
-      : "A question is ready. Waiting for the game master to start.";
-    guessInput.disabled = true;
-    guessForm.querySelector("button").disabled = true;
-    return;
-  }
-
-  roundTitle.textContent = round.question;
-
-  if (round.status === "active") {
-    roundStatus.textContent = viewer?.isGameMaster
-      ? "Players are guessing now."
-      : `${round.attemptsRemaining} of ${round.maxAttempts} attempts left.`;
-
-    const canGuess =
-      !viewer?.isGameMaster &&
-      round.attemptsRemaining > 0 &&
-      session.status === "in_progress";
-
-    guessInput.disabled = !canGuess;
-    guessForm.querySelector("button").disabled = !canGuess;
-    return;
-  }
-
-  const winner = session.players.find((player) => player.id === round.winnerPlayerId);
-  roundStatus.textContent = winner
-    ? winner.id === viewer?.id
-      ? `You have won. The answer was ${round.answer}.`
-      : `${winner.displayName} won. The answer was ${round.answer}.`
-    : `No winner this round. The answer was ${round.answer}.`;
-  guessInput.disabled = true;
-  guessForm.querySelector("button").disabled = true;
-}
-
-function renderSession() {
-  const session = state.session;
-
-  if (!session || !session.viewer) {
-    sessionTitle.textContent = "No active session";
-    sessionMeta.innerHTML = "<span>Choose a name to get started.</span>";
-    leaveButton.hidden = true;
-    renderPlayers([]);
-    renderChat([]);
-    masterControls.hidden = true;
-    guessForm.hidden = true;
-    roundTitle.textContent = "Waiting in the lobby";
-    roundStatus.textContent = "The current game master can prepare the next question.";
-    countdownPill.textContent = "Timer: --";
-    return;
-  }
-
-  leaveButton.hidden = false;
-  sessionTitle.textContent = `Session ${session.id}`;
-  sessionMeta.innerHTML = `
-    <span>${session.playerCount} players connected</span>
-    <span>${session.status === "in_progress" ? "Game in progress" : "Lobby open"}</span>
-    <span>You are ${session.viewer.displayName}</span>
-  `;
-
-  renderPlayers(session.players);
-  renderChat(session.events || []);
-  renderRound(session);
-
-  masterControls.hidden = !isViewerGameMaster();
-  guessForm.hidden = isViewerGameMaster();
-
-  if (isViewerGameMaster()) {
-    startButton.disabled =
-      session.playerCount < 3 || !session.round || session.round.status !== "draft";
-  }
-}
-
-async function refreshSession(showErrors = false) {
-  if (!state.sessionId || !state.playerId) {
-    return;
-  }
-
-  try {
-    const data = await request(
-      `/api/sessions/${encodeURIComponent(state.sessionId)}?playerId=${encodeURIComponent(state.playerId)}`
-    );
-    state.session = data.session;
-    renderSession();
-    hideFeedback(sessionFeedback);
-  } catch (error) {
-    if (showErrors) {
-      showFeedback(sessionFeedback, error.message, "error");
-    }
-  }
-}
-
-function startPolling() {
-  clearInterval(state.pollTimer);
-  state.pollTimer = setInterval(() => {
-    refreshSession();
-  }, 1500);
-}
-
-async function createSession(event) {
-  event.preventDefault();
-  hideFeedback(entryFeedback);
-
-  try {
-    const data = await request("/api/sessions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName: createNameInput.value })
-    });
-
-    state.sessionId = data.session.id;
-    state.playerId = data.playerId;
-    state.displayName = data.session.viewer.displayName;
-    state.session = data.session;
-    saveStoredIdentity();
-    renderSession();
-    startPolling();
-    showFeedback(entryFeedback, data.message);
-    createForm.reset();
-  } catch (error) {
-    showFeedback(entryFeedback, error.message, "error");
-  }
-}
-
-async function joinSession(event) {
-  event.preventDefault();
-  hideFeedback(entryFeedback);
-
-  try {
-    const code = joinCodeInput.value.trim().toUpperCase();
-    const data = await request(`/api/sessions/${encodeURIComponent(code)}/join`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName: joinNameInput.value })
-    });
-
-    state.sessionId = data.session.id;
-    state.playerId = data.playerId;
-    state.displayName = data.session.viewer.displayName;
-    state.session = data.session;
-    saveStoredIdentity();
-    renderSession();
-    startPolling();
-    showFeedback(entryFeedback, data.message);
-    joinForm.reset();
-  } catch (error) {
-    showFeedback(entryFeedback, error.message, "error");
-  }
-}
-
-async function leaveSession() {
-  if (!state.sessionId || !state.playerId) {
-    return;
-  }
-
-  try {
-    const data = await request(`/api/sessions/${encodeURIComponent(state.sessionId)}/leave`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: state.playerId })
-    });
-
-    clearInterval(state.pollTimer);
-    clearStoredIdentity();
-    renderSession();
-    showFeedback(entryFeedback, data.message);
-  } catch (error) {
-    showFeedback(sessionFeedback, error.message, "error");
-  }
-}
-
-async function saveQuestion(event) {
-  event.preventDefault();
-
-  try {
-    const data = await request(`/api/sessions/${encodeURIComponent(state.sessionId)}/question`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        playerId: state.playerId,
-        question: questionInput.value,
-        answer: answerInput.value
-      })
-    });
-
-    state.session = data.session;
-    renderSession();
-    showFeedback(sessionFeedback, data.message);
-  } catch (error) {
-    showFeedback(sessionFeedback, error.message, "error");
-  }
-}
-
-async function startRound() {
-  try {
-    const data = await request(`/api/sessions/${encodeURIComponent(state.sessionId)}/start`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ playerId: state.playerId })
-    });
-
-    state.session = data.session;
-    questionForm.reset();
-    renderSession();
-    showFeedback(sessionFeedback, data.message);
-  } catch (error) {
-    showFeedback(sessionFeedback, error.message, "error");
-  }
-}
-
-async function submitGuess(event) {
-  event.preventDefault();
-
-  try {
-    const data = await request(`/api/sessions/${encodeURIComponent(state.sessionId)}/guess`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        playerId: state.playerId,
-        guess: guessInput.value
-      })
-    });
-
-    guessForm.reset();
-    state.session = data.session;
-    renderSession();
-    showFeedback(sessionFeedback, data.message);
-  } catch (error) {
-    showFeedback(sessionFeedback, error.message, "error");
-  }
-}
-
-createForm.addEventListener("submit", createSession);
-joinForm.addEventListener("submit", joinSession);
-questionForm.addEventListener("submit", saveQuestion);
-guessForm.addEventListener("submit", submitGuess);
-startButton.addEventListener("click", startRound);
-leaveButton.addEventListener("click", leaveSession);
-
-loadStoredIdentity();
-renderSession();
-
-if (state.sessionId && state.playerId) {
-  startPolling();
-  refreshSession(true);
-}
+state.deviceId = getDeviceId();
+showPaymentBanner();
+loadChat().catch((error) => addTemporaryBotError(error.message));

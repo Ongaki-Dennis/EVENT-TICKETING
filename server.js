@@ -10,26 +10,79 @@ const PORT = Number(process.env.PORT) || 3000;
 const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : path.join(__dirname, "data");
-const DATA_FILE = path.join(DATA_DIR, "game-sessions.json");
-const ROUND_DURATION_MS = 60 * 1000;
-const MAX_ATTEMPTS = 3;
-const WIN_POINTS = 10;
+const DATA_FILE = path.join(DATA_DIR, "restaurant-sessions.json");
+const PAYSTACK_BASE_URL = "https://api.paystack.co";
+const DEFAULT_CURRENCY = process.env.PAYSTACK_CURRENCY || "NGN";
 
 let dataLock = Promise.resolve();
 
+const menu = [
+  {
+    id: "jollof",
+    name: "Smoky Jollof Rice",
+    description: "Party-style rice with fried plantain and slaw.",
+    options: [
+      { id: "chicken", label: "with grilled chicken", price: 4500 },
+      { id: "beef", label: "with peppered beef", price: 5200 },
+      { id: "veggie", label: "vegetarian bowl", price: 3800 }
+    ]
+  },
+  {
+    id: "suya",
+    name: "Suya Wrap",
+    description: "Spiced beef, onions, tomato, cabbage, and suya mayo.",
+    options: [
+      { id: "regular", label: "regular", price: 3200 },
+      { id: "double", label: "double beef", price: 4500 },
+      { id: "chicken", label: "chicken suya", price: 3600 }
+    ]
+  },
+  {
+    id: "egusi",
+    name: "Egusi Soup Combo",
+    description: "Egusi soup served with your swallow of choice.",
+    options: [
+      { id: "eba", label: "with eba", price: 4800 },
+      { id: "pounded-yam", label: "with pounded yam", price: 5600 },
+      { id: "semo", label: "with semo", price: 5000 }
+    ]
+  },
+  {
+    id: "fish",
+    name: "Grilled Tilapia",
+    description: "Whole tilapia with chips, pepper sauce, and salad.",
+    options: [
+      { id: "half", label: "half fish plate", price: 6500 },
+      { id: "full", label: "full fish plate", price: 9800 }
+    ]
+  },
+  {
+    id: "zobo",
+    name: "Zobo Cooler",
+    description: "Chilled hibiscus drink with ginger and citrus.",
+    options: [
+      { id: "small", label: "350ml cup", price: 900 },
+      { id: "large", label: "750ml bottle", price: 1600 }
+    ]
+  }
+];
+
+const supportedCurrencies = [
+  { code: "NGN", country: "Nigeria", locale: "en-NG", rateFromNgn: 1 },
+  { code: "GHS", country: "Ghana", locale: "en-GH", rateFromNgn: 0.0094 },
+  { code: "KES", country: "Kenya", locale: "en-KE", rateFromNgn: 0.083 },
+  { code: "ZAR", country: "South Africa", locale: "en-ZA", rateFromNgn: 0.011 },
+  { code: "USD", country: "United States", locale: "en-US", rateFromNgn: 0.00065 },
+  { code: "GBP", country: "United Kingdom", locale: "en-GB", rateFromNgn: 0.00051 },
+  { code: "EUR", country: "European Union", locale: "de-DE", rateFromNgn: 0.0006 }
+];
+
+app.set("trust proxy", 1);
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-function sanitizeText(value, maxLength = 120) {
-  return String(value || "")
-    .trim()
-    .replace(/\s+/g, " ")
-    .slice(0, maxLength);
-}
-
 function withDataLock(task) {
-  const run = async () => task();
-  const next = dataLock.then(run, run);
+  const next = dataLock.then(task, task);
   dataLock = next.catch(() => {});
   return next;
 }
@@ -50,9 +103,7 @@ async function readStore() {
 
   try {
     const parsed = JSON.parse(content);
-    return {
-      sessions: Array.isArray(parsed.sessions) ? parsed.sessions : []
-    };
+    return { sessions: Array.isArray(parsed.sessions) ? parsed.sessions : [] };
   } catch {
     return { sessions: [] };
   }
@@ -63,579 +114,666 @@ async function writeStore(store) {
   await fs.writeFile(DATA_FILE, `${JSON.stringify(store, null, 2)}\n`, "utf8");
 }
 
-function createEvent(type, message, meta = {}) {
+function sanitizeText(value, maxLength = 180) {
+  return String(value || "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, maxLength);
+}
+
+function getCurrency(code) {
+  return (
+    supportedCurrencies.find((currency) => currency.code === code) ||
+    supportedCurrencies.find((currency) => currency.code === DEFAULT_CURRENCY) ||
+    supportedCurrencies[0]
+  );
+}
+
+function validateCurrency(value) {
+  const code = sanitizeText(value, 3).toUpperCase();
+  const currency = supportedCurrencies.find((entry) => entry.code === code);
+
+  if (!currency) {
+    const error = new Error("Select a supported currency.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return currency.code;
+}
+
+function convertFromNgn(amount, currencyCode) {
+  const currency = getCurrency(currencyCode);
+  return Math.round(amount * currency.rateFromNgn * 100) / 100;
+}
+
+function money(amount, currencyCode = DEFAULT_CURRENCY) {
+  const currency = getCurrency(currencyCode);
+
+  return new Intl.NumberFormat(currency.locale, {
+    style: "currency",
+    currency: currency.code,
+    maximumFractionDigits: currency.code === "NGN" ? 0 : 2
+  }).format(convertFromNgn(amount, currency.code));
+}
+
+function makeBotMessage(text, meta = {}) {
   return {
     id: crypto.randomUUID(),
-    type,
-    message,
+    sender: "bot",
+    text,
     createdAt: new Date().toISOString(),
     ...meta
   };
 }
 
-function createPlayer(displayName) {
+function makeUserMessage(text) {
   return {
     id: crypto.randomUUID(),
-    displayName,
-    score: 0,
-    joinedAt: new Date().toISOString()
+    sender: "user",
+    text,
+    createdAt: new Date().toISOString()
   };
 }
 
-function createSession(gameMasterName) {
-  const gameMaster = createPlayer(gameMasterName);
-
-  return {
-    id: crypto.randomUUID().slice(0, 8).toUpperCase(),
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    status: "lobby",
-    roundNumber: 0,
-    currentGameMasterId: gameMaster.id,
-    players: [gameMaster],
-    round: null,
-    lastRoundSummary: null,
-    events: [
-      createEvent("system", `${gameMaster.displayName} created the session and became game master.`)
-    ]
-  };
+function mainMenuText(prefix = "Welcome to Amsterdon. What would you like to do?") {
+  return [
+    prefix,
+    "",
+    "Select 1 to Place an order",
+    "Select 99 to checkout order",
+    "Select 98 to see order history",
+    "Select 97 to see current order",
+    "Select 0 to cancel order"
+  ].join("\n");
 }
 
-function getPlayer(session, playerId) {
-  return session.players.find((player) => player.id === playerId);
+function menuText(currencyCode) {
+  const lines = ["Select a meal by number:"];
+  menu.forEach((item, index) => {
+    const lowestPrice = Math.min(...item.options.map((option) => option.price));
+    lines.push(`${index + 1}. ${item.name} - from ${money(lowestPrice, currencyCode)}`);
+    lines.push(`   ${item.description}`);
+  });
+  lines.push("");
+  lines.push("Select 0 to cancel order");
+  return lines.join("\n");
 }
 
-function getGameMaster(session) {
-  return getPlayer(session, session.currentGameMasterId) || null;
+function optionText(item, currencyCode) {
+  const lines = [`Choose an option for ${item.name}:`];
+  item.options.forEach((option, index) => {
+    lines.push(`${index + 1}. ${option.label} - ${money(option.price, currencyCode)}`);
+  });
+  lines.push("");
+  lines.push("Select 0 to cancel order");
+  return lines.join("\n");
 }
 
-function getNextGameMasterId(session, currentId) {
-  if (!session.players.length) {
-    return null;
+function summarizeItems(items, currencyCode = DEFAULT_CURRENCY) {
+  if (!items.length) {
+    return "Your current order is empty.";
   }
 
-  const currentIndex = session.players.findIndex((player) => player.id === currentId);
-
-  if (currentIndex === -1) {
-    return session.players[0].id;
-  }
-
-  return session.players[(currentIndex + 1) % session.players.length].id;
+  const lines = items.map((item, index) => {
+    const schedule = item.scheduledFor ? ` scheduled for ${formatDateTime(item.scheduledFor)}` : "";
+    return `${index + 1}. ${item.name} ${item.optionLabel} - ${money(item.price, currencyCode)}${schedule}`;
+  });
+  lines.push(`Total: ${money(totalFor(items), currencyCode)}`);
+  return lines.join("\n");
 }
 
-function buildPublicRound(round, viewerId, session) {
-  if (!round) {
-    return null;
-  }
+function totalFor(items) {
+  return items.reduce((sum, item) => sum + item.price, 0);
+}
 
-  const isGameMaster = session.currentGameMasterId === viewerId;
-  const viewerAttemptsUsed = round.attemptsByPlayer?.[viewerId] || 0;
-  const answerVisible = round.status === "ended" || isGameMaster;
+function formatDateTime(value) {
+  return new Date(value).toLocaleString("en-NG", {
+    dateStyle: "medium",
+    timeStyle: "short"
+  });
+}
 
+function createSession(deviceId) {
+  const now = new Date().toISOString();
   return {
-    question: round.question,
-    answer: answerVisible ? round.answer : null,
-    status: round.status,
-    createdBy: round.createdBy,
-    startedAt: round.startedAt,
-    expiresAt: round.expiresAt,
-    endedAt: round.endedAt,
-    winnerPlayerId: round.winnerPlayerId,
-    endReason: round.endReason,
-    attemptsRemaining: Math.max(0, MAX_ATTEMPTS - viewerAttemptsUsed),
-    maxAttempts: MAX_ATTEMPTS
+    deviceId,
+    createdAt: now,
+    updatedAt: now,
+    currency: getCurrency(DEFAULT_CURRENCY).code,
+    state: { mode: "menu", selectedMenuIndex: null },
+    currentOrder: [],
+    placedOrders: [],
+    messages: [makeBotMessage(mainMenuText())]
   };
 }
 
-function buildSessionView(session, viewerId) {
-  const viewer = getPlayer(session, viewerId);
-  const gameMaster = getGameMaster(session);
-
-  return {
-    id: session.id,
-    status: session.status,
-    roundNumber: session.roundNumber,
-    playerCount: session.players.length,
-    currentGameMasterId: session.currentGameMasterId,
-    gameMasterName: gameMaster ? gameMaster.displayName : null,
-    viewer: viewer
-      ? {
-          id: viewer.id,
-          displayName: viewer.displayName,
-          score: viewer.score,
-          isGameMaster: viewer.id === session.currentGameMasterId
-        }
-      : null,
-    players: session.players.map((player) => ({
-      id: player.id,
-      displayName: player.displayName,
-      score: player.score,
-      isGameMaster: player.id === session.currentGameMasterId
-    })),
-    round: buildPublicRound(session.round, viewerId, session),
-    lastRoundSummary: session.lastRoundSummary,
-    events: session.events.slice(-80)
-  };
-}
-
-function ensureSessionExists(store, sessionId) {
-  const session = store.sessions.find((entry) => entry.id === sessionId);
+function getOrCreateSession(store, deviceId) {
+  let session = store.sessions.find((entry) => entry.deviceId === deviceId);
 
   if (!session) {
-    const error = new Error("Session not found.");
-    error.statusCode = 404;
-    throw error;
+    session = createSession(deviceId);
+    store.sessions.push(session);
+  } else if (!session.currency) {
+    session.currency = getCurrency(DEFAULT_CURRENCY).code;
   }
 
   return session;
 }
 
-function ensurePlayerInSession(session, playerId) {
-  const player = getPlayer(session, playerId);
+function validateDeviceId(value) {
+  const deviceId = sanitizeText(value, 80);
 
-  if (!player) {
-    const error = new Error("Player not found in this session.");
-    error.statusCode = 404;
-    throw error;
-  }
-
-  return player;
-}
-
-function ensureGameMaster(session, playerId) {
-  if (session.currentGameMasterId !== playerId) {
-    const error = new Error("Only the current game master can do that.");
-    error.statusCode = 403;
-    throw error;
-  }
-}
-
-function expireRoundIfNeeded(session) {
-  if (!session.round || session.round.status !== "active") {
-    return false;
-  }
-
-  if (Date.now() < new Date(session.round.expiresAt).getTime()) {
-    return false;
-  }
-
-  endRound(session, {
-    endReason: "time_expired",
-    message: `Time is up. The answer was "${session.round.answer}".`
-  });
-
-  return true;
-}
-
-function endRound(session, { winnerPlayerId = null, endReason, message }) {
-  if (!session.round) {
-    return;
-  }
-
-  const completedRound = {
-    question: session.round.question,
-    answer: session.round.answer,
-    winnerPlayerId,
-    endReason,
-    endedAt: new Date().toISOString()
-  };
-
-  session.round.status = "ended";
-  session.round.endedAt = completedRound.endedAt;
-  session.round.winnerPlayerId = winnerPlayerId;
-  session.round.endReason = endReason;
-  session.status = "lobby";
-
-  if (winnerPlayerId) {
-    const winner = getPlayer(session, winnerPlayerId);
-
-    if (winner) {
-      winner.score += WIN_POINTS;
-    }
-  }
-
-  session.events.push(createEvent("system", message, { winnerPlayerId, endReason }));
-
-  const previousGameMasterId = session.currentGameMasterId;
-  session.currentGameMasterId = getNextGameMasterId(session, previousGameMasterId);
-  session.lastRoundSummary = completedRound;
-  session.round = null;
-
-  const nextGameMaster = getGameMaster(session);
-
-  if (nextGameMaster) {
-    session.events.push(
-      createEvent(
-        "system",
-        `${nextGameMaster.displayName} is now the game master for the next round.`
-      )
-    );
-  }
-}
-
-function validateSessionCode(sessionId) {
-  const normalized = sanitizeText(sessionId, 8).toUpperCase();
-
-  if (!/^[A-Z0-9]{6,8}$/.test(normalized)) {
-    const error = new Error("Enter a valid session code.");
+  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(deviceId)) {
+    const error = new Error("A valid device id is required.");
     error.statusCode = 400;
     throw error;
   }
 
-  return normalized;
+  return deviceId;
+}
+
+function resetToMenu(session) {
+  session.state = { mode: "menu", selectedMenuIndex: null };
+}
+
+function cancelOrder(session) {
+  if (!session.currentOrder.length) {
+    session.messages.push(makeBotMessage(mainMenuText("No active order to cancel.")));
+    resetToMenu(session);
+    return;
+  }
+
+  session.currentOrder = [];
+  session.messages.push(makeBotMessage(mainMenuText("Your current order has been cancelled.")));
+  resetToMenu(session);
+}
+
+function showCurrentOrder(session) {
+  const body = session.currentOrder.length
+    ? `Current order:\n${summarizeItems(session.currentOrder, session.currency)}`
+    : "No current order yet.";
+  session.messages.push(makeBotMessage(mainMenuText(body)));
+  resetToMenu(session);
+}
+
+function showOrderHistory(session) {
+  if (!session.placedOrders.length) {
+    session.messages.push(makeBotMessage(mainMenuText("You have no placed orders yet.")));
+    resetToMenu(session);
+    return;
+  }
+
+  const lines = ["Your placed orders:"];
+  session.placedOrders
+    .slice()
+    .reverse()
+    .forEach((order) => {
+      lines.push(
+        `Order ${order.code}: ${money(order.total, session.currency)} - ${order.paymentStatus} - ${formatDateTime(order.createdAt)}`
+      );
+      order.items.forEach((item) => {
+        lines.push(`  - ${item.name} ${item.optionLabel}`);
+      });
+    });
+  lines.push("");
+  session.messages.push(makeBotMessage(mainMenuText(lines.join("\n"))));
+  resetToMenu(session);
+}
+
+function checkoutOrder(session) {
+  if (!session.currentOrder.length) {
+    session.messages.push(makeBotMessage(mainMenuText("No order to place.")));
+    resetToMenu(session);
+    return;
+  }
+
+  const order = {
+    id: crypto.randomUUID(),
+    code: `AM-${crypto.randomUUID().slice(0, 6).toUpperCase()}`,
+    items: session.currentOrder,
+    total: totalFor(session.currentOrder),
+    currency: session.currency,
+    status: "placed",
+    paymentStatus: "unpaid",
+    paystackReference: null,
+    createdAt: new Date().toISOString()
+  };
+
+  session.placedOrders.push(order);
+  session.currentOrder = [];
+  resetToMenu(session);
+  session.messages.push(
+    makeBotMessage(
+      [
+        "Order placed.",
+        `Order ${order.code}`,
+        summarizeItems(order.items, session.currency),
+        "",
+        "Use the Pay button below to pay securely with Paystack test checkout.",
+        "Select 1 to Place a new order"
+      ].join("\n"),
+      { orderId: order.id, paymentStatus: order.paymentStatus }
+    )
+  );
+}
+
+function scheduleCurrentOrder(session, text) {
+  if (!session.currentOrder.length) {
+    session.messages.push(makeBotMessage(mainMenuText("Add an item before scheduling an order.")));
+    resetToMenu(session);
+    return true;
+  }
+
+  const rawDate = text.replace(/^schedule\s+/i, "");
+  const parsedDate = new Date(rawDate);
+
+  if (!rawDate || Number.isNaN(parsedDate.getTime()) || parsedDate.getTime() <= Date.now()) {
+    session.messages.push(
+      makeBotMessage(
+        [
+          "Please enter a future date and time like:",
+          "schedule 2026-05-18 18:30",
+          "",
+          "Or select 99 to checkout now."
+        ].join("\n")
+      )
+    );
+    return true;
+  }
+
+  session.currentOrder = session.currentOrder.map((item) => ({
+    ...item,
+    scheduledFor: parsedDate.toISOString()
+  }));
+  session.messages.push(
+    makeBotMessage(
+      mainMenuText(`Order scheduled for ${formatDateTime(parsedDate.toISOString())}.\n${summarizeItems(session.currentOrder, session.currency)}`)
+    )
+  );
+  resetToMenu(session);
+  return true;
+}
+
+function handleMenuMode(session, text) {
+  if (text === "1") {
+    session.state = { mode: "select_item", selectedMenuIndex: null };
+    session.messages.push(makeBotMessage(menuText(session.currency)));
+    return;
+  }
+
+  if (text === "99") {
+    checkoutOrder(session);
+    return;
+  }
+
+  if (text === "98") {
+    showOrderHistory(session);
+    return;
+  }
+
+  if (text === "97") {
+    showCurrentOrder(session);
+    return;
+  }
+
+  if (text === "0") {
+    cancelOrder(session);
+    return;
+  }
+
+  if (/^schedule\s+/i.test(text) && scheduleCurrentOrder(session, text)) {
+    return;
+  }
+
+  session.messages.push(makeBotMessage(mainMenuText("Please select a valid option.")));
+}
+
+function handleSelectItemMode(session, text) {
+  if (text === "0") {
+    cancelOrder(session);
+    return;
+  }
+
+  const selectedIndex = Number(text) - 1;
+
+  if (!Number.isInteger(selectedIndex) || !menu[selectedIndex]) {
+    session.messages.push(makeBotMessage(`Please choose a meal from 1 to ${menu.length}.\n\n${menuText(session.currency)}`));
+    return;
+  }
+
+  session.state = { mode: "select_option", selectedMenuIndex: selectedIndex };
+  session.messages.push(makeBotMessage(optionText(menu[selectedIndex], session.currency)));
+}
+
+function handleSelectOptionMode(session, text) {
+  if (text === "0") {
+    cancelOrder(session);
+    return;
+  }
+
+  const item = menu[session.state.selectedMenuIndex];
+
+  if (!item) {
+    session.state = { mode: "select_item", selectedMenuIndex: null };
+    session.messages.push(makeBotMessage(menuText(session.currency)));
+    return;
+  }
+
+  const optionIndex = Number(text) - 1;
+  const option = item.options[optionIndex];
+
+  if (!Number.isInteger(optionIndex) || !option) {
+    session.messages.push(makeBotMessage(`Please choose an option from 1 to ${item.options.length}.\n\n${optionText(item, session.currency)}`));
+    return;
+  }
+
+  session.currentOrder.push({
+    id: crypto.randomUUID(),
+    menuItemId: item.id,
+    optionId: option.id,
+    name: item.name,
+    optionLabel: option.label,
+    price: option.price,
+    scheduledFor: null
+  });
+  resetToMenu(session);
+  session.messages.push(
+    makeBotMessage(
+      mainMenuText(
+        [
+          `${item.name} ${option.label} added to your order.`,
+          "",
+          summarizeItems(session.currentOrder, session.currency),
+          "",
+          "You can type schedule YYYY-MM-DD HH:mm to schedule this order."
+        ].join("\n")
+      )
+    )
+  );
+}
+
+function processMessage(session, input) {
+  const text = sanitizeText(input, 120).toLowerCase();
+
+  if (!text) {
+    session.messages.push(makeBotMessage("Please send a number from the menu."));
+    return;
+  }
+
+  session.messages.push(makeUserMessage(sanitizeText(input, 120)));
+
+  if (text === "98") {
+    showOrderHistory(session);
+    return;
+  }
+
+  if (text === "97") {
+    showCurrentOrder(session);
+    return;
+  }
+
+  if (text === "99") {
+    checkoutOrder(session);
+    return;
+  }
+
+  if (text === "0") {
+    cancelOrder(session);
+    return;
+  }
+
+  if (/^schedule\s+/i.test(text) && scheduleCurrentOrder(session, sanitizeText(input, 120))) {
+    return;
+  }
+
+  if (session.state.mode === "select_item") {
+    handleSelectItemMode(session, text);
+    return;
+  }
+
+  if (session.state.mode === "select_option") {
+    handleSelectOptionMode(session, text);
+    return;
+  }
+
+  handleMenuMode(session, text);
+}
+
+function buildSessionView(session) {
+  const currency = getCurrency(session.currency);
+
+  return {
+    deviceId: session.deviceId,
+    currency: currency.code,
+    supportedCurrencies,
+    messages: session.messages.slice(-80),
+    currentOrder: session.currentOrder,
+    placedOrders: session.placedOrders,
+    menu,
+    totals: {
+      currentOrder: totalFor(session.currentOrder),
+      currentOrderConverted: convertFromNgn(totalFor(session.currentOrder), currency.code)
+    }
+  };
+}
+
+async function paystackRequest(pathname, payload) {
+  if (!process.env.PAYSTACK_SECRET_KEY) {
+    const error = new Error("Paystack test secret key is not configured.");
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const response = await fetch(`${PAYSTACK_BASE_URL}${pathname}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || !data.status) {
+    const error = new Error(data.message || "Paystack request failed.");
+    error.statusCode = response.status || 502;
+    throw error;
+  }
+
+  return data;
+}
+
+async function verifyPaystackReference(reference) {
+  if (!process.env.PAYSTACK_SECRET_KEY) {
+    const error = new Error("Paystack test secret key is not configured.");
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const response = await fetch(`${PAYSTACK_BASE_URL}/transaction/verify/${encodeURIComponent(reference)}`, {
+    headers: {
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+    }
+  });
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok || !data.status) {
+    const error = new Error(data.message || "Could not verify Paystack payment.");
+    error.statusCode = response.status || 502;
+    throw error;
+  }
+
+  return data.data;
+}
+
+function findOrder(store, deviceId, orderId) {
+  const session = getOrCreateSession(store, deviceId);
+  const order = session.placedOrders.find((entry) => entry.id === orderId);
+
+  if (!order) {
+    const error = new Error("Order not found.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return { session, order };
 }
 
 app.get("/api/health", (_req, res) => {
-  res.json({
-    ok: true,
-    app: "guessing-game",
-    roundDurationSeconds: ROUND_DURATION_MS / 1000,
-    maxAttempts: MAX_ATTEMPTS,
-    winPoints: WIN_POINTS
-  });
+  res.json({ ok: true, app: "restaurant-chatbot", menuItems: menu.length });
 });
 
-app.post("/api/sessions", async (req, res) => {
-  const displayName = sanitizeText(req.body?.displayName, 40);
-
-  if (displayName.length < 2) {
-    res.status(400).json({ message: "Display name must be at least 2 characters long." });
-    return;
-  }
-
-  const result = await withDataLock(async () => {
-    const store = await readStore();
-    const session = createSession(displayName);
-    store.sessions.push(session);
-    await writeStore(store);
-
-    return {
-      message: `Session ${session.id} is ready.`,
-      playerId: session.currentGameMasterId,
-      session: buildSessionView(session, session.currentGameMasterId)
-    };
-  });
-
-  res.status(201).json(result);
-});
-
-app.post("/api/sessions/:id/join", async (req, res) => {
-  const sessionId = validateSessionCode(req.params.id);
-  const displayName = sanitizeText(req.body?.displayName, 40);
-
-  if (displayName.length < 2) {
-    res.status(400).json({ message: "Display name must be at least 2 characters long." });
-    return;
-  }
-
+app.get("/api/chat/:deviceId", async (req, res) => {
   try {
-    const result = await withDataLock(async () => {
-      const store = await readStore();
-      const session = ensureSessionExists(store, sessionId);
-      expireRoundIfNeeded(session);
-
-      if (session.status === "in_progress") {
-        const error = new Error("You cannot join while a game is in progress.");
-        error.statusCode = 409;
-        throw error;
-      }
-
-      const duplicateName = session.players.some(
-        (player) => player.displayName.toLowerCase() === displayName.toLowerCase()
-      );
-
-      if (duplicateName) {
-        const error = new Error("That display name is already in this session.");
-        error.statusCode = 409;
-        throw error;
-      }
-
-      const player = createPlayer(displayName);
-      session.players.push(player);
-      session.updatedAt = new Date().toISOString();
-      session.events.push(createEvent("system", `${displayName} joined the session.`));
-      await writeStore(store);
-
-      return {
-        message: `${displayName} joined session ${session.id}.`,
-        playerId: player.id,
-        session: buildSessionView(session, player.id)
-      };
-    });
-
-    res.json(result);
-  } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message || "Join failed." });
-  }
-});
-
-app.get("/api/sessions/:id", async (req, res) => {
-  const sessionId = validateSessionCode(req.params.id);
-  const viewerId = sanitizeText(req.query.playerId, 64);
-
-  try {
+    const deviceId = validateDeviceId(req.params.deviceId);
     const session = await withDataLock(async () => {
       const store = await readStore();
-      const entry = ensureSessionExists(store, sessionId);
-      const changed = expireRoundIfNeeded(entry);
-
-      if (changed) {
-        entry.updatedAt = new Date().toISOString();
-        await writeStore(store);
-      }
-
+      const entry = getOrCreateSession(store, deviceId);
+      await writeStore(store);
       return entry;
     });
 
-    res.json({ session: buildSessionView(session, viewerId) });
+    res.json({ session: buildSessionView(session) });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message || "Could not load session." });
+    res.status(error.statusCode || 500).json({ message: error.message || "Could not load chat." });
   }
 });
 
-app.post("/api/sessions/:id/leave", async (req, res) => {
-  const sessionId = validateSessionCode(req.params.id);
-  const playerId = sanitizeText(req.body?.playerId, 64);
-
-  if (!playerId) {
-    res.status(400).json({ message: "Player id is required." });
-    return;
-  }
-
+app.patch("/api/chat/:deviceId/currency", async (req, res) => {
   try {
-    const result = await withDataLock(async () => {
+    const deviceId = validateDeviceId(req.params.deviceId);
+    const currency = validateCurrency(req.body?.currency);
+    const session = await withDataLock(async () => {
       const store = await readStore();
-      const session = ensureSessionExists(store, sessionId);
-      const player = ensurePlayerInSession(session, playerId);
-      const leavingWasGameMaster = playerId === session.currentGameMasterId;
-
-      session.players = session.players.filter((entry) => entry.id !== playerId);
-      session.events.push(createEvent("system", `${player.displayName} left the session.`));
-
-      if (!session.players.length) {
-        store.sessions = store.sessions.filter((entry) => entry.id !== session.id);
-        await writeStore(store);
-        return {
-          deleted: true,
-          message: "Session deleted because all players left."
-        };
-      }
-
-      if (session.status === "in_progress" && leavingWasGameMaster) {
-        endRound(session, {
-          endReason: "player_left",
-          message: `The round ended because ${player.displayName} left. The answer was "${session.round.answer}".`
-        });
-      } else if (leavingWasGameMaster) {
-        session.currentGameMasterId = getNextGameMasterId(session, playerId);
-        const nextGameMaster = getGameMaster(session);
-
-        if (nextGameMaster) {
-          session.events.push(
-            createEvent("system", `${nextGameMaster.displayName} is now the game master.`)
-          );
-        }
-      }
-
-      session.updatedAt = new Date().toISOString();
+      const entry = getOrCreateSession(store, deviceId);
+      entry.currency = currency;
+      entry.updatedAt = new Date().toISOString();
+      entry.messages.push(makeBotMessage(mainMenuText(`Currency changed to ${currency}.`)));
       await writeStore(store);
-
-      return {
-        deleted: false,
-        message: `${player.displayName} left the session.`
-      };
+      return entry;
     });
 
-    res.json(result);
+    res.json({ session: buildSessionView(session) });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message || "Could not leave session." });
+    res.status(error.statusCode || 500).json({ message: error.message || "Could not update currency." });
   }
 });
 
-app.post("/api/sessions/:id/question", async (req, res) => {
-  const sessionId = validateSessionCode(req.params.id);
-  const playerId = sanitizeText(req.body?.playerId, 64);
-  const question = sanitizeText(req.body?.question, 180);
-  const answer = sanitizeText(req.body?.answer, 120);
-
-  if (question.length < 6) {
-    res.status(400).json({ message: "Question must be at least 6 characters long." });
-    return;
-  }
-
-  if (answer.length < 1) {
-    res.status(400).json({ message: "Answer is required." });
-    return;
-  }
-
+app.post("/api/chat/:deviceId/messages", async (req, res) => {
   try {
-    const result = await withDataLock(async () => {
+    const deviceId = validateDeviceId(req.params.deviceId);
+    const message = sanitizeText(req.body?.message, 120);
+    const session = await withDataLock(async () => {
       const store = await readStore();
-      const session = ensureSessionExists(store, sessionId);
-      ensurePlayerInSession(session, playerId);
-      ensureGameMaster(session, playerId);
-      expireRoundIfNeeded(session);
-
-      if (session.status === "in_progress") {
-        const error = new Error("You cannot change the question during an active round.");
-        error.statusCode = 409;
-        throw error;
-      }
-
-      session.round = {
-        question,
-        answer,
-        status: "draft",
-        createdBy: playerId,
-        startedAt: null,
-        expiresAt: null,
-        endedAt: null,
-        winnerPlayerId: null,
-        endReason: null,
-        attemptsByPlayer: {},
-        guesses: []
-      };
-      session.updatedAt = new Date().toISOString();
-      session.events.push(createEvent("system", "A new question is ready. The game master can start the round."));
+      const entry = getOrCreateSession(store, deviceId);
+      processMessage(entry, message);
+      entry.updatedAt = new Date().toISOString();
       await writeStore(store);
-
-      return {
-        message: "Question saved. Start the round when everyone is ready.",
-        session: buildSessionView(session, playerId)
-      };
+      return entry;
     });
 
-    res.json(result);
+    res.json({ session: buildSessionView(session) });
   } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message || "Could not save question." });
+    res.status(error.statusCode || 500).json({ message: error.message || "Message failed." });
   }
 });
 
-app.post("/api/sessions/:id/start", async (req, res) => {
-  const sessionId = validateSessionCode(req.params.id);
-  const playerId = sanitizeText(req.body?.playerId, 64);
+app.post("/api/payments/initialize", async (req, res) => {
+  try {
+    const deviceId = validateDeviceId(req.body?.deviceId);
+    const orderId = sanitizeText(req.body?.orderId, 80);
+    const email = sanitizeText(req.body?.email, 120).toLowerCase();
+    const requestedCurrency = validateCurrency(req.body?.currency || DEFAULT_CURRENCY);
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      res.status(400).json({ message: "Enter a valid email address for payment." });
+      return;
+    }
+
+    const { order, session } = await withDataLock(async () => {
+      const store = await readStore();
+      return findOrder(store, deviceId, orderId);
+    });
+
+    if (order.paymentStatus === "paid") {
+      res.status(409).json({ message: "This order has already been paid." });
+      return;
+    }
+
+    const callbackUrl = `${req.protocol}://${req.get("host")}/payment/callback`;
+    const reference = `CK_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+    const currency = requestedCurrency || session.currency;
+    const convertedTotal = convertFromNgn(order.total, currency);
+    const data = await paystackRequest("/transaction/initialize", {
+      email,
+      amount: Math.round(convertedTotal * 100),
+      currency,
+      reference,
+      callback_url: callbackUrl,
+      metadata: {
+        deviceId,
+        orderId,
+        orderCode: order.code,
+        currency
+      }
+    });
+
+    await withDataLock(async () => {
+      const store = await readStore();
+      const found = findOrder(store, deviceId, orderId);
+      found.order.paystackReference = reference;
+      found.order.paymentStatus = "pending";
+      found.order.paymentCurrency = currency;
+      found.order.paymentAmount = convertedTotal;
+      found.session.updatedAt = new Date().toISOString();
+      await writeStore(store);
+    });
+
+    res.json({
+      authorizationUrl: data.data.authorization_url,
+      reference
+    });
+  } catch (error) {
+    res.status(error.statusCode || 500).json({ message: error.message || "Payment setup failed." });
+  }
+});
+
+app.get("/payment/callback", async (req, res) => {
+  const reference = sanitizeText(req.query.reference, 120);
+
+  if (!reference) {
+    res.redirect("/?payment=failed");
+    return;
+  }
 
   try {
-    const result = await withDataLock(async () => {
+    const payment = await verifyPaystackReference(reference);
+    const deviceId = validateDeviceId(payment.metadata?.deviceId);
+    const orderId = sanitizeText(payment.metadata?.orderId, 80);
+    let paid = false;
+
+    await withDataLock(async () => {
       const store = await readStore();
-      const session = ensureSessionExists(store, sessionId);
-      ensurePlayerInSession(session, playerId);
-      ensureGameMaster(session, playerId);
-      expireRoundIfNeeded(session);
-
-      if (session.players.length < 3) {
-        const error = new Error("At least 3 players are required before the game starts.");
-        error.statusCode = 400;
-        throw error;
-      }
-
-      if (!session.round || session.round.status !== "draft") {
-        const error = new Error("Create a question and answer before starting the game.");
-        error.statusCode = 400;
-        throw error;
-      }
-
-      session.status = "in_progress";
-      session.roundNumber += 1;
-      session.round.status = "active";
-      session.round.startedAt = new Date().toISOString();
-      session.round.expiresAt = new Date(Date.now() + ROUND_DURATION_MS).toISOString();
-      session.updatedAt = new Date().toISOString();
-      session.events.push(
-        createEvent(
-          "system",
-          `Round ${session.roundNumber} started. Players have ${MAX_ATTEMPTS} attempts and 60 seconds.`
+      const { session, order } = findOrder(store, deviceId, orderId);
+      paid = payment.status === "success";
+      order.paymentStatus = paid ? "paid" : "failed";
+      order.paystackReference = reference;
+      session.messages.push(
+        makeBotMessage(
+          paid
+            ? `Payment successful for order ${order.code}. Thank you for ordering from Amsterdon.`
+            : `Payment was not completed for order ${order.code}. You can try paying again from order history.`,
+          { orderId: order.id, paymentStatus: order.paymentStatus }
         )
       );
-      await writeStore(store);
-
-      return {
-        message: "Game started.",
-        session: buildSessionView(session, playerId)
-      };
-    });
-
-    res.json(result);
-  } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message || "Could not start game." });
-  }
-});
-
-app.post("/api/sessions/:id/guess", async (req, res) => {
-  const sessionId = validateSessionCode(req.params.id);
-  const playerId = sanitizeText(req.body?.playerId, 64);
-  const guess = sanitizeText(req.body?.guess, 120);
-
-  if (guess.length < 1) {
-    res.status(400).json({ message: "Enter a guess before submitting." });
-    return;
-  }
-
-  try {
-    const result = await withDataLock(async () => {
-      const store = await readStore();
-      const session = ensureSessionExists(store, sessionId);
-      const player = ensurePlayerInSession(session, playerId);
-      expireRoundIfNeeded(session);
-
-      if (session.status !== "in_progress" || !session.round || session.round.status !== "active") {
-        const error = new Error("There is no active round right now.");
-        error.statusCode = 409;
-        throw error;
-      }
-
-      if (playerId === session.currentGameMasterId) {
-        const error = new Error("The game master cannot submit guesses.");
-        error.statusCode = 403;
-        throw error;
-      }
-
-      const attemptsUsed = session.round.attemptsByPlayer[playerId] || 0;
-
-      if (attemptsUsed >= MAX_ATTEMPTS) {
-        const error = new Error("You have used all 3 attempts.");
-        error.statusCode = 409;
-        throw error;
-      }
-
-      const isCorrect = guess.toLowerCase() === session.round.answer.toLowerCase();
-      session.round.attemptsByPlayer[playerId] = attemptsUsed + 1;
-      session.round.guesses.push({
-        playerId,
-        guess,
-        createdAt: new Date().toISOString(),
-        isCorrect
-      });
-      session.events.push(
-        createEvent(
-          isCorrect ? "winner" : "guess",
-          isCorrect
-            ? `${player.displayName} guessed the correct answer.`
-            : `${player.displayName} guessed "${guess}" and it was not correct.`,
-          { playerId, guess, isCorrect }
-        )
-      );
-
-      if (isCorrect) {
-        endRound(session, {
-          winnerPlayerId: playerId,
-          endReason: "winner",
-          message: `${player.displayName} won the round. The answer was "${session.round.answer}".`
-        });
-      }
-
       session.updatedAt = new Date().toISOString();
       await writeStore(store);
-
-      return {
-        message: isCorrect ? "You have won." : "Guess submitted.",
-        session: buildSessionView(session, playerId)
-      };
     });
 
-    res.json(result);
-  } catch (error) {
-    res.status(error.statusCode || 500).json({ message: error.message || "Could not submit guess." });
+    res.redirect(`/?deviceId=${encodeURIComponent(deviceId)}&payment=${paid ? "success" : "failed"}`);
+  } catch {
+    res.redirect("/?payment=failed");
   }
 });
 
@@ -648,11 +786,11 @@ async function startServer() {
   await ensureDataFile();
 
   app.listen(PORT, () => {
-    console.log(`Guessing game running on http://localhost:${PORT}`);
+    console.log(`Restaurant chatbot running on http://localhost:${PORT}`);
   });
 }
 
 startServer().catch((error) => {
-  console.error("Failed to start the guessing game.", error);
+  console.error("Failed to start restaurant chatbot.", error);
   process.exit(1);
 });
