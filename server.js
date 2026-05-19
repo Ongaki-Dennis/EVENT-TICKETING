@@ -903,6 +903,19 @@ app.use((error, _req, res, _next) => {
 async function startServer() {
   await ensureDataFile();
 
+  // ===============================
+// START SERVER (LOCAL ONLY)
+// ===============================
+
+async function startServer() {
+  await ensureDataFile();
+
+  // Vercel runs in serverless mode → DO NOT listen()
+  if (process.env.VERCEL) {
+    console.log("Running in Vercel serverless mode");
+    return;
+  }
+
   app.listen(PORT, () => {
     console.log(`Restaurant chatbot running on http://localhost:${PORT}`);
   });
@@ -912,3 +925,8 @@ startServer().catch((error) => {
   console.error("Failed to start restaurant chatbot.", error);
   process.exit(1);
 });
+
+// ===============================
+// EXPORT FOR VERCEL
+// ===============================
+module.exports = app;
