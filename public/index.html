@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Amsterdon ChatBot</title>
+    <title>AMSTERDON RESTAURANT ChatBot</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -11,10 +11,15 @@
       <section class="chat-card" aria-label="Restaurant chatbot">
         <header class="chat-header">
           <div>
-            <p class="eyebrow">Amsterdon</p>
+            <p class="eyebrow">AMSTERDON RESTAURANT</p>
             <h1>Restaurant ChatBot</h1>
           </div>
-          <div class="status-pill">Online</div>
+          <div class="header-actions">
+            <button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">
+              Dark mode
+            </button>
+            <div class="status-pill">Online</div>
+          </div>
         </header>
 
         <section id="payment-banner" class="payment-banner" hidden></section>
@@ -60,12 +65,21 @@
 
     <dialog id="payment-dialog" class="payment-dialog">
       <form id="payment-form" method="dialog">
-        <h2>Pay with Paystack</h2>
+        <h2>Choose payment method</h2>
         <p id="payment-summary"></p>
+        <label>
+          Payment method
+          <select id="payment-method"></select>
+        </label>
         <label>
           Email address
           <input id="payment-email" type="email" placeholder="customer@example.com" required />
         </label>
+        <label id="payment-phone-wrap" hidden>
+          Phone number
+          <input id="payment-phone" type="tel" placeholder="+254712345678" />
+        </label>
+        <p id="payment-method-note" class="payment-method-note"></p>
         <menu>
           <button type="button" id="cancel-payment" class="secondary-button">Cancel</button>
           <button type="submit">Continue</button>

@@ -1,6 +1,9 @@
 const DEVICE_KEY = "amsterdon-device-id";
 const EMAIL_KEY = "amsterdon-payment-email";
 const CURRENCY_KEY = "amsterdon-currency";
+const THEME_KEY = "amsterdon-theme";
+const PAYMENT_METHOD_KEY = "amsterdon-payment-method";
+const PHONE_KEY = "amsterdon-payment-phone";
 
 const state = {
   deviceId: "",
@@ -17,9 +20,28 @@ const paymentDialog = document.querySelector("#payment-dialog");
 const paymentForm = document.querySelector("#payment-form");
 const paymentSummary = document.querySelector("#payment-summary");
 const paymentEmail = document.querySelector("#payment-email");
+const paymentMethod = document.querySelector("#payment-method");
+const paymentPhoneWrap = document.querySelector("#payment-phone-wrap");
+const paymentPhone = document.querySelector("#payment-phone");
+const paymentMethodNote = document.querySelector("#payment-method-note");
 const cancelPayment = document.querySelector("#cancel-payment");
 const paymentBanner = document.querySelector("#payment-banner");
 const currencySelect = document.querySelector("#currency-select");
+const themeToggle = document.querySelector("#theme-toggle");
+
+function applyTheme(theme) {
+  const nextTheme = theme === "dark" ? "dark" : "light";
+  document.documentElement.dataset.theme = nextTheme;
+  localStorage.setItem(THEME_KEY, nextTheme);
+  themeToggle.textContent = nextTheme === "dark" ? "Light mode" : "Dark mode";
+  themeToggle.setAttribute("aria-pressed", String(nextTheme === "dark"));
+}
+
+function loadTheme() {
+  const savedTheme = localStorage.getItem(THEME_KEY);
+  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+  applyTheme(savedTheme || (prefersDark ? "dark" : "light"));
+}
 
 function getDeviceId() {
   const params = new URLSearchParams(window.location.search);
@@ -113,7 +135,7 @@ function createMessage(message) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "pay-button";
-    button.textContent = "Pay with Paystack";
+    button.textContent = "Pay order";
     button.addEventListener("click", () => openPaymentDialog(message.orderId));
     article.append(button);
   }
@@ -144,6 +166,48 @@ function renderCurrencySelect() {
 
   currencySelect.value = state.session.currency;
   localStorage.setItem(CURRENCY_KEY, state.session.currency);
+}
+
+function renderPaymentMethods() {
+  paymentMethod.replaceChildren();
+
+  for (const method of state.session.paymentMethods || []) {
+    const option = document.createElement("option");
+    option.value = method.id;
+    option.textContent = method.label;
+    paymentMethod.append(option);
+  }
+
+  const savedMethod = localStorage.getItem(PAYMENT_METHOD_KEY);
+  paymentMethod.value =
+    savedMethod && (state.session.paymentMethods || []).some((method) => method.id === savedMethod)
+      ? savedMethod
+      : "paystack";
+  updatePaymentMethodFields();
+}
+
+function updatePaymentMethodFields() {
+  const method = paymentMethod.value;
+  const needsPhone = method === "mpesa" || method === "airtel";
+  const needsEmail = method === "paystack";
+
+  paymentPhoneWrap.hidden = !needsPhone;
+  paymentPhone.required = needsPhone;
+  paymentEmail.required = needsEmail;
+  paymentEmail.parentElement.hidden = !needsEmail;
+
+  if (method === "mpesa") {
+    paymentMethodNote.textContent =
+      "M-Pesa will show Till Number 5797579 and prompt the customer to complete payment from their phone.";
+  } else if (method === "airtel") {
+    paymentMethodNote.textContent =
+      "Airtel Money will show merchant payment instructions and save the order as pending.";
+  } else if (method === "crypto") {
+    paymentMethodNote.textContent =
+      "Crypto Wallet will show the wallet address and save the order as pending.";
+  } else {
+    paymentMethodNote.textContent = "Paystack will redirect the customer to secure card or bank checkout.";
+  }
 }
 
 function emptyState(text) {
@@ -236,6 +300,7 @@ function render() {
 
   renderMessages();
   renderCurrencySelect();
+  renderPaymentMethods();
   renderCurrentOrder();
   renderHistory();
 }
@@ -302,6 +367,8 @@ function openPaymentDialog(orderId) {
   state.paymentOrderId = orderId;
   paymentSummary.textContent = `${order.code} - ${formatMoney(order.total)}`;
   paymentEmail.value = localStorage.getItem(EMAIL_KEY) || "";
+  paymentPhone.value = localStorage.getItem(PHONE_KEY) || "";
+  renderPaymentMethods();
   paymentDialog.showModal();
 }
 
@@ -309,7 +376,9 @@ async function initializePayment(event) {
   event.preventDefault();
 
   try {
+    localStorage.setItem(PAYMENT_METHOD_KEY, paymentMethod.value);
     localStorage.setItem(EMAIL_KEY, paymentEmail.value.trim());
+    localStorage.setItem(PHONE_KEY, paymentPhone.value.trim());
     const data = await request("/api/payments/initialize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -317,10 +386,22 @@ async function initializePayment(event) {
         deviceId: state.deviceId,
         orderId: state.paymentOrderId,
         email: paymentEmail.value,
+        phone: paymentPhone.value,
+        paymentMethod: paymentMethod.value,
         currency: state.session.currency
       })
     });
-    window.location.href = data.authorizationUrl;
+
+    if (data.authorizationUrl) {
+      window.location.href = data.authorizationUrl;
+      return;
+    }
+
+    if (data.session) {
+      state.session = data.session;
+      render();
+    }
+    paymentDialog.close();
   } catch (error) {
     paymentSummary.textContent = error.message;
   }
@@ -339,10 +420,16 @@ async function updateCurrency(currency) {
 chatForm.addEventListener("submit", sendMessage);
 paymentForm.addEventListener("submit", initializePayment);
 cancelPayment.addEventListener("click", () => paymentDialog.close());
+paymentMethod.addEventListener("change", updatePaymentMethodFields);
 currencySelect.addEventListener("change", () => {
   updateCurrency(currencySelect.value).catch((error) => addTemporaryBotError(error.message));
 });
+themeToggle.addEventListener("click", () => {
+  const currentTheme = document.documentElement.dataset.theme;
+  applyTheme(currentTheme === "dark" ? "light" : "dark");
+});
 
+loadTheme();
 state.deviceId = getDeviceId();
 showPaymentBanner();
 loadChat().catch((error) => addTemporaryBotError(error.message));

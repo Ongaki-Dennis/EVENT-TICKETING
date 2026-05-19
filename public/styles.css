@@ -15,8 +15,67 @@
   --success: #166534;
   --shadow: 0 24px 70px rgba(12, 8, 5, 0.34);
   --glass-line: rgba(255, 255, 255, 0.42);
+  --page-overlay-top: rgba(20, 14, 9, 0.24);
+  --page-overlay-bottom: rgba(20, 14, 9, 0.34);
+  --panel-glass-a: rgba(255, 255, 255, 0.76);
+  --panel-glass-b: rgba(255, 250, 241, 0.54);
+  --panel-glass-c: rgba(255, 255, 255, 0.42);
+  --panel-glass-d: rgba(255, 255, 255, 0.08);
+  --header-glass-a: rgba(58, 42, 30, 0.9);
+  --header-glass-b: rgba(32, 22, 16, 0.7);
+  --header-glass-c: rgba(47, 35, 28, 0.78);
+  --bar-glass-a: rgba(255, 255, 255, 0.62);
+  --bar-glass-b: rgba(255, 255, 255, 0.28);
+  --message-glass-a: rgba(255, 255, 255, 0.86);
+  --message-glass-b: rgba(255, 250, 241, 0.56);
+  --message-glass-c: rgba(255, 255, 255, 0.42);
+  --field-glass-a: rgba(255, 255, 255, 0.9);
+  --field-glass-b: rgba(255, 250, 241, 0.68);
+  --field-glass-c: rgba(255, 255, 255, 0.58);
+  --item-glass-a: rgba(255, 255, 255, 0.82);
+  --item-glass-b: rgba(255, 250, 241, 0.5);
+  --item-glass-c: rgba(255, 255, 255, 0.38);
   --radius: 8px;
   --body: Inter, "Segoe UI", Arial, sans-serif;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #17110d;
+  --surface: #211711;
+  --surface-strong: #2a1d15;
+  --ink: #fff7ea;
+  --muted: #d8c4ad;
+  --line: rgba(255, 247, 234, 0.16);
+  --brand: #e2603f;
+  --brand-dark: #b83b22;
+  --leaf: #49a88b;
+  --leaf-soft: rgba(73, 168, 139, 0.18);
+  --gold: #ffd166;
+  --error: #ffb4a8;
+  --success: #9df2b8;
+  --shadow: 0 28px 80px rgba(0, 0, 0, 0.52);
+  --glass-line: rgba(255, 255, 255, 0.2);
+  --page-overlay-top: rgba(4, 3, 2, 0.46);
+  --page-overlay-bottom: rgba(4, 3, 2, 0.62);
+  --panel-glass-a: rgba(35, 24, 17, 0.82);
+  --panel-glass-b: rgba(18, 12, 9, 0.62);
+  --panel-glass-c: rgba(255, 255, 255, 0.1);
+  --panel-glass-d: rgba(255, 255, 255, 0.03);
+  --header-glass-a: rgba(14, 9, 6, 0.94);
+  --header-glass-b: rgba(45, 28, 18, 0.8);
+  --header-glass-c: rgba(12, 8, 5, 0.78);
+  --bar-glass-a: rgba(40, 28, 20, 0.74);
+  --bar-glass-b: rgba(20, 13, 9, 0.42);
+  --message-glass-a: rgba(55, 37, 26, 0.9);
+  --message-glass-b: rgba(25, 16, 11, 0.62);
+  --message-glass-c: rgba(18, 12, 9, 0.56);
+  --field-glass-a: rgba(48, 34, 24, 0.9);
+  --field-glass-b: rgba(27, 18, 13, 0.72);
+  --field-glass-c: rgba(19, 13, 9, 0.62);
+  --item-glass-a: rgba(55, 37, 26, 0.84);
+  --item-glass-b: rgba(28, 18, 13, 0.58);
+  --item-glass-c: rgba(20, 13, 9, 0.5);
 }
 
 * {
@@ -29,7 +88,7 @@ body {
   font-family: var(--body);
   color: var(--ink);
   background:
-    linear-gradient(rgba(20, 14, 9, 0.24), rgba(20, 14, 9, 0.34)),
+    linear-gradient(var(--page-overlay-top), var(--page-overlay-bottom)),
     url("https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=1800&q=80");
   background-size: cover;
   background-position: center;
@@ -64,8 +123,8 @@ select {
   padding: 13px 14px;
   color: var(--ink);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 250, 241, 0.68)),
-    rgba(255, 255, 255, 0.58);
+    linear-gradient(180deg, var(--field-glass-a), var(--field-glass-b)),
+    var(--field-glass-c);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
@@ -89,8 +148,8 @@ select:focus {
 .payment-dialog form {
   border: 1px solid var(--glass-line);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.76), rgba(255, 250, 241, 0.54)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.08));
+    linear-gradient(145deg, var(--panel-glass-a), var(--panel-glass-b)),
+    linear-gradient(180deg, var(--panel-glass-c), var(--panel-glass-d));
   box-shadow: var(--shadow);
 }
 
@@ -120,9 +179,32 @@ select:focus {
   align-items: center;
   padding: 22px;
   background:
-    linear-gradient(135deg, rgba(58, 42, 30, 0.9), rgba(32, 22, 16, 0.7)),
-    rgba(47, 35, 28, 0.78);
+    linear-gradient(135deg, var(--header-glass-a), var(--header-glass-b)),
+    var(--header-glass-c);
   color: #fff;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: end;
+}
+
+.theme-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.26);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.06)),
+    rgba(255, 255, 255, 0.08);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
+}
+
+.theme-toggle:hover {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.1)),
+    rgba(255, 255, 255, 0.12);
 }
 
 .eyebrow {
@@ -173,7 +255,7 @@ h2 {
   align-items: center;
   padding: 12px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.34);
-  background: linear-gradient(90deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.28));
+  background: linear-gradient(90deg, var(--bar-glass-a), var(--bar-glass-b));
 }
 
 .currency-bar label {
@@ -208,8 +290,8 @@ h2 {
   border-radius: var(--radius);
   border: 1px solid rgba(255, 255, 255, 0.52);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.86), rgba(255, 250, 241, 0.56)),
-    rgba(255, 255, 255, 0.42);
+    linear-gradient(145deg, var(--message-glass-a), var(--message-glass-b)),
+    var(--message-glass-c);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.74),
     0 16px 34px rgba(35, 22, 12, 0.18);
@@ -249,6 +331,14 @@ h2 {
   color: rgba(255, 255, 255, 0.72);
 }
 
+:root[data-theme="dark"] .message time {
+  color: rgba(255, 247, 234, 0.66);
+}
+
+:root[data-theme="dark"] .message.user time {
+  color: rgba(255, 255, 255, 0.74);
+}
+
 .pay-button {
   margin-top: 12px;
   background: var(--leaf);
@@ -270,8 +360,8 @@ h2 {
   padding: 18px;
   border-top: 1px solid rgba(255, 255, 255, 0.36);
   background:
-    linear-gradient(90deg, rgba(255, 255, 255, 0.68), rgba(255, 250, 241, 0.36)),
-    rgba(255, 255, 255, 0.32);
+    linear-gradient(90deg, var(--bar-glass-a), var(--bar-glass-b)),
+    rgba(255, 255, 255, 0.16);
 }
 
 .order-panel {
@@ -301,8 +391,8 @@ h2 {
   border: 1px solid rgba(255, 255, 255, 0.46);
   border-radius: var(--radius);
   background:
-    linear-gradient(145deg, rgba(255, 255, 255, 0.82), rgba(255, 250, 241, 0.5)),
-    rgba(255, 255, 255, 0.38);
+    linear-gradient(145deg, var(--item-glass-a), var(--item-glass-b)),
+    var(--item-glass-c);
   box-shadow: 0 10px 24px rgba(35, 22, 12, 0.12);
 }
 
@@ -318,6 +408,17 @@ h2 {
 .history-card li,
 .payment-dialog p {
   color: var(--muted);
+}
+
+.payment-method-note {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(145deg, var(--item-glass-a), var(--item-glass-b)),
+    var(--item-glass-c);
+  font-size: 0.92rem;
 }
 
 .order-row span {
@@ -448,6 +549,10 @@ h2 {
 
   .chat-header {
     display: grid;
+  }
+
+  .header-actions {
+    justify-content: start;
   }
 
   .message {

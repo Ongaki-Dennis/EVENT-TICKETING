@@ -13,6 +13,10 @@ const DATA_DIR = process.env.DATA_DIR
 const DATA_FILE = path.join(DATA_DIR, "restaurant-sessions.json");
 const PAYSTACK_BASE_URL = "https://api.paystack.co";
 const DEFAULT_CURRENCY = process.env.PAYSTACK_CURRENCY || "NGN";
+const MPESA_TILL_NUMBER = process.env.MPESA_TILL_NUMBER || "5797579";
+const AIRTEL_MONEY_NUMBER = process.env.AIRTEL_MONEY_NUMBER || "Set your Airtel merchant number";
+const CRYPTO_WALLET_ADDRESS =
+  process.env.CRYPTO_WALLET_ADDRESS || "Set your crypto wallet address in .env";
 
 let dataLock = Promise.resolve();
 
@@ -75,6 +79,13 @@ const supportedCurrencies = [
   { code: "USD", country: "United States", locale: "en-US", rateFromNgn: 0.00065 },
   { code: "GBP", country: "United Kingdom", locale: "en-GB", rateFromNgn: 0.00051 },
   { code: "EUR", country: "European Union", locale: "de-DE", rateFromNgn: 0.0006 }
+];
+
+const paymentMethods = [
+  { id: "paystack", label: "Paystack Card/Bank" },
+  { id: "mpesa", label: "M-Pesa Till" },
+  { id: "airtel", label: "Airtel Money" },
+  { id: "crypto", label: "Crypto Wallet" }
 ];
 
 app.set("trust proxy", 1);
@@ -142,6 +153,30 @@ function validateCurrency(value) {
   return currency.code;
 }
 
+function validatePaymentMethod(value) {
+  const method = sanitizeText(value, 24).toLowerCase();
+
+  if (!paymentMethods.some((entry) => entry.id === method)) {
+    const error = new Error("Select a supported payment method.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return method;
+}
+
+function validatePhone(value, label = "phone number") {
+  const phone = sanitizeText(value, 24);
+
+  if (!/^\+?[0-9]{9,15}$/.test(phone)) {
+    const error = new Error(`Enter a valid ${label}.`);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return phone;
+}
+
 function convertFromNgn(amount, currencyCode) {
   const currency = getCurrency(currencyCode);
   return Math.round(amount * currency.rateFromNgn * 100) / 100;
@@ -176,7 +211,7 @@ function makeUserMessage(text) {
   };
 }
 
-function mainMenuText(prefix = "Welcome to Amsterdon. What would you like to do?") {
+function mainMenuText(prefix = "Welcome to AMSTERDON RESTAURANT. What would you like to do?") {
   return [
     prefix,
     "",
@@ -350,7 +385,7 @@ function checkoutOrder(session) {
         `Order ${order.code}`,
         summarizeItems(order.items, session.currency),
         "",
-        "Use the Pay button below to pay securely with Paystack test checkout.",
+        "Use the Pay button below to choose Paystack, M-Pesa Till, Airtel Money, or Crypto Wallet.",
         "Select 1 to Place a new order"
       ].join("\n"),
       { orderId: order.id, paymentStatus: order.paymentStatus }
@@ -547,6 +582,7 @@ function buildSessionView(session) {
     deviceId: session.deviceId,
     currency: currency.code,
     supportedCurrencies,
+    paymentMethods,
     messages: session.messages.slice(-80),
     currentOrder: session.currentOrder,
     placedOrders: session.placedOrders,
@@ -620,6 +656,45 @@ function findOrder(store, deviceId, orderId) {
   return { session, order };
 }
 
+function manualPaymentInstructions({ order, method, currency, phone }) {
+  const amount = money(order.total, currency);
+
+  if (method === "mpesa") {
+    return [
+      `M-Pesa payment prompt for order ${order.code}.`,
+      `Amount: ${amount}`,
+      `Till Number: ${MPESA_TILL_NUMBER}`,
+      phone ? `Customer phone: ${phone}` : null,
+      "",
+      "On your phone, open M-Pesa, choose Lipa na M-Pesa, choose Buy Goods and Services, enter the Till Number, enter the amount, then complete with your PIN.",
+      "After paying, keep the M-Pesa confirmation message for restaurant verification."
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (method === "airtel") {
+    return [
+      `Airtel Money payment prompt for order ${order.code}.`,
+      `Amount: ${amount}`,
+      `Merchant number: ${AIRTEL_MONEY_NUMBER}`,
+      phone ? `Customer phone: ${phone}` : null,
+      "",
+      "Use Airtel Money to send the amount to the merchant number, then keep your confirmation message for restaurant verification."
+    ]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  return [
+    `Crypto wallet payment prompt for order ${order.code}.`,
+    `Amount: ${amount}`,
+    `Wallet address: ${CRYPTO_WALLET_ADDRESS}`,
+    "",
+    "Send the equivalent crypto amount to the wallet address and keep your transaction hash for restaurant verification."
+  ].join("\n");
+}
+
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, app: "restaurant-chatbot", menuItems: menu.length });
 });
@@ -685,10 +760,16 @@ app.post("/api/payments/initialize", async (req, res) => {
     const orderId = sanitizeText(req.body?.orderId, 80);
     const email = sanitizeText(req.body?.email, 120).toLowerCase();
     const requestedCurrency = validateCurrency(req.body?.currency || DEFAULT_CURRENCY);
+    const paymentMethod = validatePaymentMethod(req.body?.paymentMethod || "paystack");
+    const phone = sanitizeText(req.body?.phone, 24);
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (paymentMethod === "paystack" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       res.status(400).json({ message: "Enter a valid email address for payment." });
       return;
+    }
+
+    if ((paymentMethod === "mpesa" || paymentMethod === "airtel") && phone) {
+      validatePhone(phone, `${paymentMethod === "mpesa" ? "M-Pesa" : "Airtel"} phone number`);
     }
 
     const { order, session } = await withDataLock(async () => {
@@ -702,9 +783,46 @@ app.post("/api/payments/initialize", async (req, res) => {
     }
 
     const callbackUrl = `${req.protocol}://${req.get("host")}/payment/callback`;
-    const reference = `CK_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+    const reference = `AM_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
     const currency = requestedCurrency || session.currency;
     const convertedTotal = convertFromNgn(order.total, currency);
+
+    if (paymentMethod !== "paystack") {
+      let updatedSession;
+      const instructions = manualPaymentInstructions({
+        order,
+        method: paymentMethod,
+        currency,
+        phone
+      });
+
+      await withDataLock(async () => {
+        const store = await readStore();
+        const found = findOrder(store, deviceId, orderId);
+        found.order.paymentStatus = "pending";
+        found.order.paymentMethod = paymentMethod;
+        found.order.paymentCurrency = currency;
+        found.order.paymentAmount = convertedTotal;
+        found.order.paymentPhone = phone || null;
+        found.session.messages.push(
+          makeBotMessage(instructions, {
+            orderId: found.order.id,
+            paymentStatus: found.order.paymentStatus
+          })
+        );
+        found.session.updatedAt = new Date().toISOString();
+        updatedSession = found.session;
+        await writeStore(store);
+      });
+
+      res.json({
+        paymentMethod,
+        instructions,
+        session: buildSessionView(updatedSession)
+      });
+      return;
+    }
+
     const data = await paystackRequest("/transaction/initialize", {
       email,
       amount: Math.round(convertedTotal * 100),
@@ -762,7 +880,7 @@ app.get("/payment/callback", async (req, res) => {
       session.messages.push(
         makeBotMessage(
           paid
-            ? `Payment successful for order ${order.code}. Thank you for ordering from Amsterdon.`
+            ? `Payment successful for order ${order.code}. Thank you for ordering from AMSTERDON RESTAURANT.`
             : `Payment was not completed for order ${order.code}. You can try paying again from order history.`,
           { orderId: order.id, paymentStatus: order.paymentStatus }
         )
