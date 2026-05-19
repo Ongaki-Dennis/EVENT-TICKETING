@@ -1,9 +1,8 @@
 require("dotenv").config();
 
-const fs = require("fs/promises");
-const path = require("path");
 const crypto = require("crypto");
 const express = require("express");
+const path = require("path");
 
 const app = express();
 
@@ -13,9 +12,15 @@ const app = express();
 
 const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
-  : path.join(__dirname, "data");
+  : null; // NOT USED ON VERCEL
 
-const DATA_FILE = path.join(DATA_DIR, "restaurant-sessions.json");
+/* =========================
+   IN-MEMORY STORAGE (VERCEL SAFE)
+========================= */
+
+let store = {
+  sessions: []
+};
 
 /* =========================
    MIDDLEWARE
@@ -26,43 +31,18 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
 /* =========================
-   DATA STORAGE (Vercel SAFE BUT TEMPORARY)
+   SIMPLE STORAGE HELPERS
 ========================= */
 
-async function ensureDataFile() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-
-  try {
-    await fs.access(DATA_FILE);
-  } catch {
-    await fs.writeFile(
-      DATA_FILE,
-      JSON.stringify({ sessions: [] }, null, 2),
-      "utf8"
-    );
-  }
+function readStore() {
+  return store;
 }
 
-async function readStore() {
-  await ensureDataFile();
-  const content = await fs.readFile(DATA_FILE, "utf8");
-
-  try {
-    return JSON.parse(content);
-  } catch {
-    return { sessions: [] };
-  }
+function writeStore() {
+  return store;
 }
 
-async function writeStore(store) {
-  await ensureDataFile();
-  await fs.writeFile(DATA_FILE, JSON.stringify(store, null, 2), "utf8");
-}
-
-/* =========================
-   SIMPLE LOCK
-========================= */
-
+/* simple async lock */
 let dataLock = Promise.resolve();
 
 function withDataLock(task) {
@@ -95,7 +75,7 @@ function validateDeviceId(value) {
 }
 
 /* =========================
-   SESSION
+   SESSION LOGIC
 ========================= */
 
 function createSession(deviceId) {
@@ -131,7 +111,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     service: "restaurant-chatbot",
-    runtime: "vercel-ready"
+    runtime: "vercel"
   });
 });
 
@@ -140,20 +120,22 @@ app.get("/api/chat/:deviceId", async (req, res) => {
     const deviceId = validateDeviceId(req.params.deviceId);
 
     const session = await withDataLock(async () => {
-      const store = await readStore();
-      const s = getOrCreateSession(store, deviceId);
-      await writeStore(store);
+      const storeRef = readStore();
+      const s = getOrCreateSession(storeRef, deviceId);
+      writeStore(storeRef);
       return s;
     });
 
     res.json({ session });
   } catch (err) {
-    res.status(err.statusCode || 500).json({ message: err.message });
+    res.status(err.statusCode || 500).json({
+      message: err.message || "Server error"
+    });
   }
 });
 
 /* =========================
-   VERCEL ENTRY POINT
+   VERCEL EXPORT
 ========================= */
 
 module.exports = app;
