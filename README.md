@@ -1,67 +1,66 @@
-# Restaurant ChatBot
+# Eventful
 
-A restaurant ordering chatbot built with `Express`, a browser chat UI, a JSON data store, Paystack test checkout, and manual mobile/crypto payment prompts.
+Eventful is a TypeScript/Node.js ticketing platform for creators and eventees. It supports authenticated event creation, event browsing, Paystack checkout, QR ticket generation, QR validation at entry, flexible reminders, share links, creator payment visibility, analytics, rate limiting, caching, and Swagger API documentation.
 
 ## Features
 
-- Chat-style ordering interface
-- Device-based sessions with `localStorage`
-- Number-driven bot flow:
-  - `1` places an order
-  - `99` checks out the current order
-  - `98` shows placed order history
-  - `97` shows the current order
-  - `0` cancels the current order
-- Menu items with multiple options
-- Input validation on the client and server
-- Current order and order history persistence
-- Paystack test payment initialization and callback verification
-- M-Pesa Till payment prompt using Till Number `5797579`
-- Airtel Money and Crypto Wallet payment prompts
-- Currency selector for Nigeria, Ghana, Kenya, South Africa, the United States, the United Kingdom, and the EU
-- Optional scheduling by typing `schedule YYYY-MM-DD HH:mm` before checkout
+- Creator and eventee authentication with signed bearer tokens
+- Role-based authorization for creator and eventee workflows
+- Published event listing with a TTL cache layer
+- Creator event management and attendee visibility
+- Eventee ticket reservation and Paystack transaction initialization
+- Paystack redirect callback and transaction verification before QR generation
+- East Africa currency choices, with Paystack checkout support for KES and USD
+- QR validation endpoint for creator check-in
+- Creator analytics for attendees, tickets bought, revenue, and scanned tickets
+- Flexible reminder records for event-level defaults and eventee preferences
+- Social sharing URLs for X, Facebook, LinkedIn, and WhatsApp
+- Swagger documentation at `/api/docs`
+- Unit/integration tests with Vitest and Supertest
 
-## Requirements
+## Environment
 
-- Node.js 18+
-- A Paystack test secret key for payment testing
-
-## Environment Variables
-
-Create a `.env` file from `.env.example`:
+Create `.env` from `.env.example`:
 
 ```bash
 PORT=3000
 DATA_DIR=./data
+PUBLIC_URL=http://localhost:3000
+AUTH_SECRET=replace-with-a-long-random-secret
 PAYSTACK_SECRET_KEY=sk_test_your_paystack_secret_key
-PAYSTACK_CURRENCY=NGN
-MPESA_TILL_NUMBER=5797579
-AIRTEL_MONEY_NUMBER=your-airtel-merchant-number
-CRYPTO_WALLET_ADDRESS=your-wallet-address
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=your-smtp-user
+SMTP_PASS=your-smtp-password
+SMTP_FROM=Eventful <tickets@example.com>
 ```
 
-`PAYSTACK_SECRET_KEY` must be a test key when testing locally. Without it, the chatbot still works, but payment initialization returns a configuration error. `PAYSTACK_CURRENCY` controls the default currency shown to new users; customers can switch currencies inside the app.
+If `PAYSTACK_SECRET_KEY` is omitted, Eventful simulates payment confirmation for local development. For live Paystack checkout, set `PAYSTACK_SECRET_KEY` and make `PUBLIC_URL` a public HTTPS URL so Paystack can return buyers to `/api/payments/:reference/callback`.
 
-## Run Locally
+If SMTP settings are omitted, Eventful writes email activity to a dev outbox available through `/api/notifications/outbox`. With SMTP configured, ticket confirmations and due reminder emails are sent through Nodemailer.
+
+## Demo Login
+
+The browser UI includes `Demo Creator` and `Demo Eventee` buttons. They call `/api/auth/demo`, which creates or refreshes stable demo users:
+
+- `creator@eventful.test` / `password123`
+- `eventee@eventful.test` / `password123`
+
+## Run
 
 ```bash
 npm install
-npm start
+npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). API docs are available at [http://localhost:3000/api/docs](http://localhost:3000/api/docs).
 
-## Test the Chat Flow
+## Test
 
-1. Open the app in a browser.
-2. Send `1` to see the restaurant menu.
-3. Choose a meal number.
-4. Choose one of the meal options.
-5. Send `97` to inspect the current order.
-6. Send `99` to place the order.
-7. Click `Pay order` and choose Paystack, M-Pesa Till, Airtel Money, or Crypto Wallet.
-8. Paystack redirects to checkout. M-Pesa, Airtel, and Crypto add payment instructions to the chat and leave the order as pending for restaurant verification.
+```bash
+npm run build
+npm test
+```
 
-## Deployment
-
-The included `render.yaml` is ready for Render. Add `PAYSTACK_SECRET_KEY` in your hosting platform environment variables before testing checkout in production.
+The app persists local data to `data/eventful-db.json`.

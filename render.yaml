@@ -1,9 +1,9 @@
 services:
   - type: web
-    name: restaurant-chatbot
+    name: eventful
     env: node
     plan: starter
-    buildCommand: npm install
+    buildCommand: npm install && npm run build
     startCommand: npm start
     autoDeployTrigger: commit
     healthCheckPath: /api/health
@@ -16,7 +16,9 @@ services:
         value: production
       - key: DATA_DIR
         value: /opt/render/project/src/data
-      - key: PAYSTACK_CURRENCY
-        value: NGN
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: PUBLIC_URL
+        sync: false
       - key: PAYSTACK_SECRET_KEY
         sync: false

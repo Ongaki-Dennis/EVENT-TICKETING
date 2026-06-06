@@ -1,0 +1,17 @@
+{
+  "name": "ongaki-cloud-mvp",
+  "version": "0.1.0",
+  "description": "Runnable MVP control plane for Ongaki Cloud.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
+

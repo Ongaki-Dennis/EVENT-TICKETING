@@ -1,0 +1,670 @@
+{
+  "tenants": [
+    {
+      "id": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "Demo Tenant",
+      "slug": "demo",
+      "region": "af-east-1",
+      "createdAt": "2026-05-20T10:54:28.225Z"
+    }
+  ],
+  "projects": [
+    {
+      "id": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "Demo API",
+      "slug": "demo-api",
+      "framework": "node",
+      "status": "ready",
+      "domain": "demo-api-demo.ongaki.local",
+      "createdAt": "2026-05-20T10:54:28.225Z"
+    },
+    {
+      "id": "279f4047-f922-4590-911a-1b24bbd50106",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "Test Static Site",
+      "slug": "test-static-site",
+      "framework": "static",
+      "status": "ready",
+      "domain": "test-static-site-demo.ongaki.local",
+      "createdAt": "2026-05-20T10:58:18.351Z"
+    },
+    {
+      "id": "a3960da7-7c06-4dc4-8518-26e47b087c96",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "DENNIS ONGAKI NYAMWEYA",
+      "slug": "dennis-ongaki-nyamweya",
+      "framework": "node",
+      "status": "created",
+      "domain": "dennis-ongaki-nyamweya-demo.ongaki.local",
+      "createdAt": "2026-05-20T10:59:44.407Z"
+    },
+    {
+      "id": "464aca96-7feb-44e0-989c-c078083a7a70",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "DENNIS ONGAKI NYAMWEYA",
+      "slug": "dennis-ongaki-nyamweya",
+      "framework": "node",
+      "status": "created",
+      "domain": "dennis-ongaki-nyamweya-demo.ongaki.local",
+      "createdAt": "2026-05-20T10:59:49.587Z"
+    },
+    {
+      "id": "77b04003-3822-48fd-9c69-e561ca659090",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "DENNIS ONGAKI NYAMWEYA",
+      "slug": "dennis-ongaki-nyamweya",
+      "framework": "node",
+      "status": "created",
+      "domain": "dennis-ongaki-nyamweya-demo.ongaki.local",
+      "createdAt": "2026-05-20T10:59:50.241Z"
+    },
+    {
+      "id": "036d2a1c-df7e-4fff-8578-7c289dae4c62",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "DENNIS ONGAKI NYAMWEYA",
+      "slug": "dennis-ongaki-nyamweya",
+      "framework": "node",
+      "status": "created",
+      "domain": "dennis-ongaki-nyamweya-demo.ongaki.local",
+      "createdAt": "2026-05-20T10:59:50.465Z"
+    },
+    {
+      "id": "ee5c74e3-0601-409a-838a-2cd34d6be273",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "DENNIS ONGAKI NYAMWEYA",
+      "slug": "dennis-ongaki-nyamweya",
+      "framework": "node",
+      "status": "created",
+      "domain": "dennis-ongaki-nyamweya-demo.ongaki.local",
+      "createdAt": "2026-05-20T11:00:53.971Z"
+    },
+    {
+      "id": "fb12ddb0-bffa-41ad-a0b5-8383489e245c",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "DENNIS ONGAKI NYAMWEYA",
+      "slug": "dennis-ongaki-nyamweya",
+      "framework": "node",
+      "status": "created",
+      "domain": "dennis-ongaki-nyamweya-demo.ongaki.local",
+      "createdAt": "2026-05-20T11:00:54.549Z"
+    },
+    {
+      "id": "6b780d22-5d6d-4216-a55f-ede216c9b1f0",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "DENNIS ONGAKI NYAMWEYA",
+      "slug": "dennis-ongaki-nyamweya",
+      "framework": "node",
+      "status": "created",
+      "domain": "dennis-ongaki-nyamweya-demo.ongaki.local",
+      "createdAt": "2026-05-20T11:00:54.914Z"
+    },
+    {
+      "id": "37ee13b1-4478-4ec9-b7b7-a63767b75f79",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "falisterd",
+      "slug": "falisterd",
+      "framework": "worker",
+      "status": "created",
+      "domain": "falisterd-demo.ongaki.local",
+      "createdAt": "2026-05-20T11:16:33.611Z"
+    },
+    {
+      "id": "7f1063fb-da00-4eb1-859d-5ac376a76d79",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "falisterd",
+      "slug": "falisterd",
+      "framework": "worker",
+      "status": "created",
+      "domain": "falisterd-demo.ongaki.local",
+      "createdAt": "2026-05-20T11:16:43.422Z"
+    },
+    {
+      "id": "25ebb140-6738-4b29-a5d5-bfac05ee3863",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "falisterd",
+      "slug": "falisterd",
+      "framework": "worker",
+      "status": "created",
+      "domain": "falisterd-demo.ongaki.local",
+      "createdAt": "2026-05-20T11:16:44.787Z"
+    },
+    {
+      "id": "5a2e2731-029f-4ac2-9685-ee3fc466dbd6",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "falisterd",
+      "slug": "falisterd",
+      "framework": "worker",
+      "status": "created",
+      "domain": "falisterd-demo.ongaki.local",
+      "createdAt": "2026-05-20T11:16:45.015Z"
+    },
+    {
+      "id": "6d1378f8-1866-4722-a467-443d83d8ce1d",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "falisterd",
+      "slug": "falisterd",
+      "framework": "worker",
+      "status": "created",
+      "domain": "falisterd-demo.ongaki.local",
+      "createdAt": "2026-05-20T11:16:45.213Z"
+    },
+    {
+      "id": "8a2609ae-f039-4282-99b5-19bca5ef5b4e",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "falisterd",
+      "slug": "falisterd",
+      "framework": "worker",
+      "status": "created",
+      "domain": "falisterd-demo.ongaki.local",
+      "createdAt": "2026-05-20T11:16:45.411Z"
+    },
+    {
+      "id": "147bbd5a-d5d8-471f-80f3-63e25140ea34",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "name": "falisterd",
+      "slug": "falisterd",
+      "framework": "worker",
+      "status": "created",
+      "domain": "falisterd-demo.ongaki.local",
+      "createdAt": "2026-05-20T11:16:45.596Z"
+    }
+  ],
+  "deployments": [
+    {
+      "id": "ef762d50-cc85-4879-a265-a69939f5b888",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "status": "ready",
+      "source": "demo-upload.zip",
+      "image": "registry.ongaki.local/demo/demo-api:latest",
+      "logs": [
+        "Queued deployment",
+        "Detected Node.js project",
+        "Built container image",
+        "Created Knative service",
+        "Deployment is ready"
+      ],
+      "createdAt": "2026-05-20T10:54:28.225Z"
+    },
+    {
+      "id": "99202c9f-7187-44fd-a4b1-9ed49aefff58",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "status": "ready",
+      "source": "jhh",
+      "image": "registry.ongaki.local/ed710179-bf1e-4f02-a0f0-f8a168f6ae63/demo-api:1779274886672",
+      "logs": [
+        "Queued deployment",
+        "Received source jhh",
+        "Detected framework node",
+        "Generated container image",
+        "Provisioned local subdomain",
+        "Started metering engine",
+        "Deployment is ready"
+      ],
+      "createdAt": "2026-05-20T11:01:26.672Z"
+    },
+    {
+      "id": "02689e0e-aeae-444c-bbab-8779db9a1bb5",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "status": "ready",
+      "source": "jhh",
+      "image": "registry.ongaki.local/ed710179-bf1e-4f02-a0f0-f8a168f6ae63/demo-api:1779274887964",
+      "logs": [
+        "Queued deployment",
+        "Received source jhh",
+        "Detected framework node",
+        "Generated container image",
+        "Provisioned local subdomain",
+        "Started metering engine",
+        "Deployment is ready"
+      ],
+      "createdAt": "2026-05-20T11:01:27.964Z"
+    },
+    {
+      "id": "bc43720c-4c3a-4e53-94ab-61f3ddeeff90",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "status": "ready",
+      "source": "jhh",
+      "image": "registry.ongaki.local/ed710179-bf1e-4f02-a0f0-f8a168f6ae63/demo-api:1779274888159",
+      "logs": [
+        "Queued deployment",
+        "Received source jhh",
+        "Detected framework node",
+        "Generated container image",
+        "Provisioned local subdomain",
+        "Started metering engine",
+        "Deployment is ready"
+      ],
+      "createdAt": "2026-05-20T11:01:28.159Z"
+    },
+    {
+      "id": "32ff23c7-9970-442f-9cef-d9b055cec035",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "status": "ready",
+      "source": "jhh",
+      "image": "registry.ongaki.local/ed710179-bf1e-4f02-a0f0-f8a168f6ae63/demo-api:1779274888366",
+      "logs": [
+        "Queued deployment",
+        "Received source jhh",
+        "Detected framework node",
+        "Generated container image",
+        "Provisioned local subdomain",
+        "Started metering engine",
+        "Deployment is ready"
+      ],
+      "createdAt": "2026-05-20T11:01:28.366Z"
+    },
+    {
+      "id": "6eb89cf9-9ad6-4f20-9e3c-58c633c49c69",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "status": "ready",
+      "source": "jhh",
+      "image": "registry.ongaki.local/ed710179-bf1e-4f02-a0f0-f8a168f6ae63/demo-api:1779274888571",
+      "logs": [
+        "Queued deployment",
+        "Received source jhh",
+        "Detected framework node",
+        "Generated container image",
+        "Provisioned local subdomain",
+        "Started metering engine",
+        "Deployment is ready"
+      ],
+      "createdAt": "2026-05-20T11:01:28.571Z"
+    },
+    {
+      "id": "62f63d50-9701-4230-b10d-3d913df09303",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "status": "ready",
+      "source": "jhh",
+      "image": "registry.ongaki.local/ed710179-bf1e-4f02-a0f0-f8a168f6ae63/demo-api:1779274888786",
+      "logs": [
+        "Queued deployment",
+        "Received source jhh",
+        "Detected framework node",
+        "Generated container image",
+        "Provisioned local subdomain",
+        "Started metering engine",
+        "Deployment is ready"
+      ],
+      "createdAt": "2026-05-20T11:01:28.786Z"
+    },
+    {
+      "id": "f303f435-24fe-444d-bc28-29efea23b6ab",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "279f4047-f922-4590-911a-1b24bbd50106",
+      "status": "ready",
+      "source": "site-upload.zip",
+      "image": "registry.ongaki.local/ed710179-bf1e-4f02-a0f0-f8a168f6ae63/test-static-site:1779275816851",
+      "logs": [
+        "Queued deployment",
+        "Received source site-upload.zip",
+        "Detected framework static",
+        "Generated container image",
+        "Provisioned local subdomain",
+        "Started metering engine",
+        "Deployment is ready"
+      ],
+      "createdAt": "2026-05-20T11:16:56.851Z"
+    }
+  ],
+  "usage": [
+    {
+      "id": "54c5e4db-dec6-4d76-895c-4fdbc887cfd0",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "cycle": "2026-05",
+      "cpuSeconds": 240000,
+      "memoryGbSeconds": 420000,
+      "bandwidthGb": 180,
+      "storageGbMonth": 12,
+      "apiRequests": 2200000,
+      "functionCalls": 1800000,
+      "dbReads": 7000000,
+      "dbWrites": 1400000,
+      "cdnGb": 80,
+      "createdAt": "2026-05-20T10:54:28.225Z"
+    },
+    {
+      "id": "eb1e96c7-3eb6-4422-b6bd-6c45cc3c1067",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "cycle": "2026-05",
+      "cpuSeconds": 273600,
+      "memoryGbSeconds": 420000,
+      "bandwidthGb": 180,
+      "storageGbMonth": 12,
+      "apiRequests": 2420000,
+      "functionCalls": 1800000,
+      "dbReads": 7000000,
+      "dbWrites": 1400000,
+      "cdnGb": 80,
+      "createdAt": "2026-05-20T11:01:26.672Z"
+    },
+    {
+      "id": "271bf6ac-b2a0-412f-a099-aeeebb8dc028",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "cycle": "2026-05",
+      "cpuSeconds": 290400,
+      "memoryGbSeconds": 420000,
+      "bandwidthGb": 180,
+      "storageGbMonth": 12,
+      "apiRequests": 2530000,
+      "functionCalls": 1800000,
+      "dbReads": 7000000,
+      "dbWrites": 1400000,
+      "cdnGb": 80,
+      "createdAt": "2026-05-20T11:01:27.964Z"
+    },
+    {
+      "id": "ac3cedb4-4f0d-4755-a36d-dc940e342f50",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "cycle": "2026-05",
+      "cpuSeconds": 307200,
+      "memoryGbSeconds": 420000,
+      "bandwidthGb": 180,
+      "storageGbMonth": 12,
+      "apiRequests": 2640000,
+      "functionCalls": 1800000,
+      "dbReads": 7000000,
+      "dbWrites": 1400000,
+      "cdnGb": 80,
+      "createdAt": "2026-05-20T11:01:28.159Z"
+    },
+    {
+      "id": "95d20f3e-2129-4ded-8865-80fd86d9c672",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "cycle": "2026-05",
+      "cpuSeconds": 324000,
+      "memoryGbSeconds": 420000,
+      "bandwidthGb": 180,
+      "storageGbMonth": 12,
+      "apiRequests": 2750000,
+      "functionCalls": 1800000,
+      "dbReads": 7000000,
+      "dbWrites": 1400000,
+      "cdnGb": 80,
+      "createdAt": "2026-05-20T11:01:28.366Z"
+    },
+    {
+      "id": "d0df5fef-8d41-412a-ac11-de574ae87ddd",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "cycle": "2026-05",
+      "cpuSeconds": 340800,
+      "memoryGbSeconds": 420000,
+      "bandwidthGb": 180,
+      "storageGbMonth": 12,
+      "apiRequests": 2860000,
+      "functionCalls": 1800000,
+      "dbReads": 7000000,
+      "dbWrites": 1400000,
+      "cdnGb": 80,
+      "createdAt": "2026-05-20T11:01:28.571Z"
+    },
+    {
+      "id": "b589a466-c611-452b-9906-11f7daac8331",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "f6c7bfff-e4a2-4eda-b157-0d7dbaef8211",
+      "cycle": "2026-05",
+      "cpuSeconds": 357600,
+      "memoryGbSeconds": 420000,
+      "bandwidthGb": 180,
+      "storageGbMonth": 12,
+      "apiRequests": 2970000,
+      "functionCalls": 1800000,
+      "dbReads": 7000000,
+      "dbWrites": 1400000,
+      "cdnGb": 80,
+      "createdAt": "2026-05-20T11:01:28.786Z"
+    },
+    {
+      "id": "8c194ff6-050b-4bbc-844c-3940a50fb891",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "projectId": "279f4047-f922-4590-911a-1b24bbd50106",
+      "cycle": "2026-05",
+      "cpuSeconds": 374400,
+      "memoryGbSeconds": 420000,
+      "bandwidthGb": 180,
+      "storageGbMonth": 12,
+      "apiRequests": 3080000,
+      "functionCalls": 1800000,
+      "dbReads": 7000000,
+      "dbWrites": 1400000,
+      "cdnGb": 80,
+      "createdAt": "2026-05-20T11:16:56.851Z"
+    }
+  ],
+  "payments": [
+    {
+      "id": "fb232d03-820f-49e8-b5c8-784291c198b1",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779274796728",
+      "createdAt": "2026-05-20T10:59:56.728Z"
+    },
+    {
+      "id": "ac62fabc-7513-401a-b1de-0537858d1bd1",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25742007299,
+      "currency": "USD",
+      "reference": "pay_1779274828282",
+      "createdAt": "2026-05-20T11:00:28.282Z"
+    },
+    {
+      "id": "5fd2e215-45e1-4705-a9f0-b80bd20faee2",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25742007299,
+      "currency": "USD",
+      "reference": "pay_1779274831139",
+      "createdAt": "2026-05-20T11:00:31.139Z"
+    },
+    {
+      "id": "d90dbc10-55c1-4760-b4ee-6581301f0932",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 6777,
+      "currency": "USD",
+      "reference": "pay_1779274842413",
+      "createdAt": "2026-05-20T11:00:42.413Z"
+    },
+    {
+      "id": "ebeb1363-1b22-4f95-9f12-f023e9441dbf",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 6777,
+      "currency": "USD",
+      "reference": "pay_1779274843121",
+      "createdAt": "2026-05-20T11:00:43.121Z"
+    },
+    {
+      "id": "ca9bdbf7-f71a-40a1-94d7-4ae1a4147010",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 6777,
+      "currency": "USD",
+      "reference": "pay_1779274843337",
+      "createdAt": "2026-05-20T11:00:43.337Z"
+    },
+    {
+      "id": "41a038c3-96ef-431d-b287-9ae8454902a4",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 6776.99,
+      "currency": "USD",
+      "reference": "pay_1779274859809",
+      "createdAt": "2026-05-20T11:00:59.809Z"
+    },
+    {
+      "id": "fac84f07-b232-4b8b-82fb-5b2f8838bc3e",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 6776.99,
+      "currency": "USD",
+      "reference": "pay_1779274860371",
+      "createdAt": "2026-05-20T11:01:00.371Z"
+    },
+    {
+      "id": "308db18a-76b2-41c5-a905-1da225430b5a",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 6776.99,
+      "currency": "USD",
+      "reference": "pay_1779274860556",
+      "createdAt": "2026-05-20T11:01:00.556Z"
+    },
+    {
+      "id": "83f86def-2a4c-47a4-8229-e342bf67e857",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "bitcoin",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275827879",
+      "createdAt": "2026-05-20T11:17:07.879Z"
+    },
+    {
+      "id": "ac4f6a2a-fd7d-4ea1-abf2-56adcd10e684",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275830106",
+      "createdAt": "2026-05-20T11:17:10.106Z"
+    },
+    {
+      "id": "c134d355-281f-47ab-bd61-f7f6a59564c7",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275831002",
+      "createdAt": "2026-05-20T11:17:11.002Z"
+    },
+    {
+      "id": "3abec0ca-0091-4a08-b29f-9b3fe109aa38",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275831398",
+      "createdAt": "2026-05-20T11:17:11.398Z"
+    },
+    {
+      "id": "ae12ca96-090f-4000-9013-376cd41c2b2e",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275831600",
+      "createdAt": "2026-05-20T11:17:11.600Z"
+    },
+    {
+      "id": "d609deac-251c-4aa3-ae41-6aea42a4eb11",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275831763",
+      "createdAt": "2026-05-20T11:17:11.763Z"
+    },
+    {
+      "id": "ec40a208-6116-47da-b51e-51ed3cc403fd",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275831959",
+      "createdAt": "2026-05-20T11:17:11.959Z"
+    },
+    {
+      "id": "bc299f3c-3366-4186-821a-caca483d2f8a",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275832131",
+      "createdAt": "2026-05-20T11:17:12.131Z"
+    },
+    {
+      "id": "a20ce491-b18a-47e6-84aa-1b8da305617d",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275832346",
+      "createdAt": "2026-05-20T11:17:12.346Z"
+    },
+    {
+      "id": "17d5e3ba-c237-4ada-aa1f-0acb7c53795c",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275832539",
+      "createdAt": "2026-05-20T11:17:12.539Z"
+    },
+    {
+      "id": "c3b9d695-bea3-46a5-abb6-461ec964f666",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275832729",
+      "createdAt": "2026-05-20T11:17:12.729Z"
+    },
+    {
+      "id": "b8dbc7b9-c617-412a-ad1b-a7c2ea62c118",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275833041",
+      "createdAt": "2026-05-20T11:17:13.041Z"
+    },
+    {
+      "id": "159f0434-9dfa-4a75-b02b-3d68dce3a62e",
+      "tenantId": "ed710179-bf1e-4f02-a0f0-f8a168f6ae63",
+      "provider": "mpesa",
+      "status": "confirmed",
+      "amount": 25,
+      "currency": "USD",
+      "reference": "pay_1779275833628",
+      "createdAt": "2026-05-20T11:17:13.628Z"
+    }
+  ],
+  "invoices": []
+}

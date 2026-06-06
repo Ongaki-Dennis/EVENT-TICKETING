@@ -1,0 +1,60 @@
+grafana:
+  enabled: true
+  defaultDashboardsEnabled: true
+  persistence:
+    enabled: true
+    size: 20Gi
+prometheus:
+  prometheusSpec:
+    retention: 30d
+    retentionSize: 120GB
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    externalLabels:
+      platform: ongaki-cloud
+      region: af-east-1
+    additionalScrapeConfigs:
+      - job_name: ongaki-api-gateway
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            action: keep
+            regex: api-gateway
+      - job_name: ongaki-knative-workloads
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_namespace]
+            action: keep
+            regex: tenant-.*
+          - source_labels: [__meta_kubernetes_pod_label_ongaki_cloud_tenant]
+            target_label: tenant
+          - source_labels: [__meta_kubernetes_pod_label_ongaki_cloud_project]
+            target_label: project
+alertmanager:
+  enabled: true
+defaultRules:
+  create: true
+additionalPrometheusRulesMap:
+  ongaki-platform-rules:
+    groups:
+      - name: ongaki.billing
+        rules:
+          - alert: UsageIngestionDelayed
+            expr: time() - max(ongaki_usage_record_last_seen_seconds) > 900
+            for: 10m
+            labels:
+              severity: critical
+            annotations:
+              summary: Usage ingestion is delayed
+      - name: ongaki.runtime
+        rules:
+          - alert: HighRuntimeErrorRate
+            expr: rate(ongaki_function_errors_total[5m]) / rate(ongaki_function_invocations_total[5m]) > 0.05
+            for: 5m
+            labels:
+              severity: warning
+            annotations:
+              summary: Customer function error rate exceeds 5 percent
+

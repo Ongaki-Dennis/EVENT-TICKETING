@@ -1,435 +1,488 @@
-const DEVICE_KEY = "amsterdon-device-id";
-const EMAIL_KEY = "amsterdon-payment-email";
-const CURRENCY_KEY = "amsterdon-currency";
-const THEME_KEY = "amsterdon-theme";
-const PAYMENT_METHOD_KEY = "amsterdon-payment-method";
-const PHONE_KEY = "amsterdon-payment-phone";
-
 const state = {
-  deviceId: "",
-  session: null,
-  paymentOrderId: ""
+  token: localStorage.getItem("eventful-token"),
+  user: JSON.parse(localStorage.getItem("eventful-user") || "null"),
+  events: [],
+  tickets: [],
+  creatorEvents: [],
+  attendees: [],
+  currencies: [],
+  filter: "",
+  config: null,
+  authMode: "login"
 };
 
-const messagesEl = document.querySelector("#messages");
-const chatForm = document.querySelector("#chat-form");
-const messageInput = document.querySelector("#message-input");
-const currentOrderEl = document.querySelector("#current-order");
-const orderHistoryEl = document.querySelector("#order-history");
-const paymentDialog = document.querySelector("#payment-dialog");
-const paymentForm = document.querySelector("#payment-form");
-const paymentSummary = document.querySelector("#payment-summary");
-const paymentEmail = document.querySelector("#payment-email");
-const paymentMethod = document.querySelector("#payment-method");
-const paymentPhoneWrap = document.querySelector("#payment-phone-wrap");
-const paymentPhone = document.querySelector("#payment-phone");
-const paymentMethodNote = document.querySelector("#payment-method-note");
-const cancelPayment = document.querySelector("#cancel-payment");
-const paymentBanner = document.querySelector("#payment-banner");
+const authForm = document.querySelector("#auth-form");
+const eventForm = document.querySelector("#event-form");
+const loginButton = document.querySelector("#login-button");
+const logoutButton = document.querySelector("#logout-button");
+const sessionLabel = document.querySelector("#session-label");
+const eventsList = document.querySelector("#events-list");
+const ticketsList = document.querySelector("#tickets-list");
+const analyticsPanel = document.querySelector("#analytics-panel");
+const verifyForm = document.querySelector("#verify-form");
+const verifyResult = document.querySelector("#verify-result");
+const shareSheet = document.querySelector("#share-sheet");
+const shareTitle = document.querySelector("#share-title");
+const shareText = document.querySelector("#share-text");
+const shareActions = document.querySelector("#share-actions");
+const shareClose = document.querySelector("#share-close");
+const toast = document.querySelector("#toast");
+const roleButtons = document.querySelectorAll("[data-role-choice]");
 const currencySelect = document.querySelector("#currency-select");
-const themeToggle = document.querySelector("#theme-toggle");
+const currencyNote = document.querySelector("#currency-note");
+const eventSearch = document.querySelector("#event-search");
+const systemStatus = document.querySelector("#system-status");
+const outboxPanel = document.querySelector("#outbox-panel");
+const demoButtons = document.querySelectorAll("[data-demo-login]");
+const authModeButtons = document.querySelectorAll("[data-auth-mode]");
+const nameField = document.querySelector("[data-name-field]");
+const authSubmit = document.querySelector("#auth-submit");
 
-function applyTheme(theme) {
-  const nextTheme = theme === "dark" ? "dark" : "light";
-  document.documentElement.dataset.theme = nextTheme;
-  localStorage.setItem(THEME_KEY, nextTheme);
-  themeToggle.textContent = nextTheme === "dark" ? "Light mode" : "Dark mode";
-  themeToggle.setAttribute("aria-pressed", String(nextTheme === "dark"));
-}
+const now = new Date();
+eventForm.startsAt.value = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16);
+eventForm.endsAt.value = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000 + 3 * 60 * 60 * 1000).toISOString().slice(0, 16);
 
-function loadTheme() {
-  const savedTheme = localStorage.getItem(THEME_KEY);
-  const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
-  applyTheme(savedTheme || (prefersDark ? "dark" : "light"));
-}
-
-function getDeviceId() {
-  const params = new URLSearchParams(window.location.search);
-  const queryDeviceId = params.get("deviceId");
-
-  if (queryDeviceId) {
-    localStorage.setItem(DEVICE_KEY, queryDeviceId);
-    return queryDeviceId;
-  }
-
-  const saved = localStorage.getItem(DEVICE_KEY);
-
-  if (saved) {
-    return saved;
-  }
-
-  const created = `device_${crypto.randomUUID().replaceAll("-", "")}`;
-  localStorage.setItem(DEVICE_KEY, created);
-  return created;
-}
-
-function selectedCurrency() {
-  return state.session?.supportedCurrencies?.find((entry) => entry.code === state.session.currency);
-}
-
-function convertFromNgn(amount) {
-  const currency = selectedCurrency();
-  return Math.round(amount * (currency?.rateFromNgn || 1) * 100) / 100;
-}
-
-function formatMoney(amount) {
-  const currency = selectedCurrency() || { code: "NGN", locale: "en-NG" };
-
-  return new Intl.NumberFormat(currency.locale, {
-    style: "currency",
-    currency: currency.code,
-    maximumFractionDigits: currency.code === "NGN" ? 0 : 2
-  }).format(convertFromNgn(amount));
-}
-
-function formatDate(value) {
-  return new Date(value).toLocaleString([], {
-    dateStyle: "medium",
-    timeStyle: "short"
+async function api(path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(state.token ? { Authorization: `Bearer ${state.token}` } : {}),
+      ...options.headers
+    }
   });
-}
-
-async function request(url, options = {}) {
-  const response = await fetch(url, options);
   const data = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(data.message || "Request failed.");
-  }
-
+  if (!response.ok) throw new Error(data.message || "Request failed");
   return data;
 }
 
-function showPaymentBanner() {
-  const params = new URLSearchParams(window.location.search);
-  const payment = params.get("payment");
-
-  if (!payment) {
-    return;
-  }
-
-  paymentBanner.hidden = false;
-  paymentBanner.className = `payment-banner ${payment === "success" ? "success" : "error"}`;
-  paymentBanner.textContent =
-    payment === "success"
-      ? "Payment successful. Your chat has been updated."
-      : "Payment was not completed. You can try again from your order history.";
-
-  window.history.replaceState({}, "", window.location.pathname);
-}
-
-function createMessage(message) {
-  const article = document.createElement("article");
-  article.className = `message ${message.sender}`;
-
-  const text = document.createElement("p");
-  text.textContent = message.text;
-
-  const time = document.createElement("time");
-  time.dateTime = message.createdAt;
-  time.textContent = formatDate(message.createdAt);
-
-  article.append(text, time);
-
-  if (message.sender === "bot" && message.orderId && message.paymentStatus !== "paid") {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "pay-button";
-    button.textContent = "Pay order";
-    button.addEventListener("click", () => openPaymentDialog(message.orderId));
-    article.append(button);
-  }
-
-  return article;
-}
-
-function renderMessages() {
-  messagesEl.replaceChildren();
-
-  const fragment = document.createDocumentFragment();
-  for (const message of state.session.messages) {
-    fragment.append(createMessage(message));
-  }
-  messagesEl.append(fragment);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-
-function renderCurrencySelect() {
-  currencySelect.replaceChildren();
-
-  for (const currency of state.session.supportedCurrencies || []) {
-    const option = document.createElement("option");
-    option.value = currency.code;
-    option.textContent = `${currency.country} (${currency.code})`;
-    currencySelect.append(option);
-  }
-
-  currencySelect.value = state.session.currency;
-  localStorage.setItem(CURRENCY_KEY, state.session.currency);
-}
-
-function renderPaymentMethods() {
-  paymentMethod.replaceChildren();
-
-  for (const method of state.session.paymentMethods || []) {
-    const option = document.createElement("option");
-    option.value = method.id;
-    option.textContent = method.label;
-    paymentMethod.append(option);
-  }
-
-  const savedMethod = localStorage.getItem(PAYMENT_METHOD_KEY);
-  paymentMethod.value =
-    savedMethod && (state.session.paymentMethods || []).some((method) => method.id === savedMethod)
-      ? savedMethod
-      : "paystack";
-  updatePaymentMethodFields();
-}
-
-function updatePaymentMethodFields() {
-  const method = paymentMethod.value;
-  const needsPhone = method === "mpesa" || method === "airtel";
-  const needsEmail = method === "paystack";
-
-  paymentPhoneWrap.hidden = !needsPhone;
-  paymentPhone.required = needsPhone;
-  paymentEmail.required = needsEmail;
-  paymentEmail.parentElement.hidden = !needsEmail;
-
-  if (method === "mpesa") {
-    paymentMethodNote.textContent =
-      "M-Pesa will show Till Number 5797579 and prompt the customer to complete payment from their phone.";
-  } else if (method === "airtel") {
-    paymentMethodNote.textContent =
-      "Airtel Money will show merchant payment instructions and save the order as pending.";
-  } else if (method === "crypto") {
-    paymentMethodNote.textContent =
-      "Crypto Wallet will show the wallet address and save the order as pending.";
-  } else {
-    paymentMethodNote.textContent = "Paystack will redirect the customer to secure card or bank checkout.";
-  }
-}
-
-function emptyState(text) {
-  const div = document.createElement("div");
-  div.className = "empty-state";
-  div.textContent = text;
-  return div;
-}
-
-function renderCurrentOrder() {
-  currentOrderEl.replaceChildren();
-  const order = state.session.currentOrder;
-
-  if (!order.length) {
-    currentOrderEl.append(emptyState("No active order."));
-    return;
-  }
-
-  for (const item of order) {
-    const row = document.createElement("article");
-    row.className = "order-row";
-    row.innerHTML = `
-      <div>
-        <strong></strong>
-        <span></span>
-      </div>
-      <b></b>
-    `;
-    row.querySelector("strong").textContent = item.name;
-    row.querySelector("span").textContent = item.scheduledFor
-      ? `${item.optionLabel} - scheduled ${formatDate(item.scheduledFor)}`
-      : item.optionLabel;
-    row.querySelector("b").textContent = formatMoney(item.price);
-    currentOrderEl.append(row);
-  }
-
-  const total = document.createElement("div");
-  total.className = "order-total";
-  total.innerHTML = `<span>Total</span><strong>${formatMoney(state.session.totals.currentOrder)}</strong>`;
-  currentOrderEl.append(total);
-}
-
-function renderHistory() {
-  orderHistoryEl.replaceChildren();
-  const orders = state.session.placedOrders;
-
-  if (!orders.length) {
-    orderHistoryEl.append(emptyState("Placed orders will appear here."));
-    return;
-  }
-
-  for (const order of orders.slice().reverse()) {
-    const card = document.createElement("article");
-    card.className = "history-card";
-
-    const items = order.items
-      .map((item) => `<li>${item.name} ${item.optionLabel}</li>`)
-      .join("");
-    card.innerHTML = `
-      <div class="history-top">
-        <strong></strong>
-        <span class="payment-status"></span>
-      </div>
-      <ul>${items}</ul>
-      <div class="history-bottom">
-        <b></b>
-      </div>
-    `;
-    card.querySelector("strong").textContent = order.code;
-    card.querySelector(".payment-status").textContent = order.paymentStatus;
-    card.querySelector("b").textContent = formatMoney(order.total);
-
-    if (order.paymentStatus !== "paid") {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "pay-button compact";
-      button.textContent = "Pay";
-      button.addEventListener("click", () => openPaymentDialog(order.id));
-      card.querySelector(".history-bottom").append(button);
-    }
-
-    orderHistoryEl.append(card);
-  }
-}
-
-function render() {
-  if (!state.session) {
-    return;
-  }
-
-  renderMessages();
-  renderCurrencySelect();
-  renderPaymentMethods();
-  renderCurrentOrder();
-  renderHistory();
-}
-
-async function loadChat() {
-  const data = await request(`/api/chat/${encodeURIComponent(state.deviceId)}`);
-  state.session = data.session;
-
-  const savedCurrency = localStorage.getItem(CURRENCY_KEY);
-  if (
-    savedCurrency &&
-    savedCurrency !== state.session.currency &&
-    state.session.supportedCurrencies.some((entry) => entry.code === savedCurrency)
-  ) {
-    await updateCurrency(savedCurrency);
-    return;
-  }
-
-  render();
-}
-
-async function sendMessage(event) {
-  event.preventDefault();
-  const message = messageInput.value.trim();
-
-  if (!message) {
-    return;
-  }
-
-  messageInput.disabled = true;
-
+function money(amount, currency) {
   try {
-    const data = await request(`/api/chat/${encodeURIComponent(state.deviceId)}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message })
-    });
-    state.session = data.session;
-    chatForm.reset();
-    render();
-  } catch (error) {
-    addTemporaryBotError(error.message);
-  } finally {
-    messageInput.disabled = false;
-    messageInput.focus();
+    return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+  } catch {
+    return `${currency || "KES"} ${Number(amount || 0).toLocaleString()}`;
   }
 }
 
-function addTemporaryBotError(message) {
-  const article = document.createElement("article");
-  article.className = "message bot error";
-  article.textContent = message;
-  messagesEl.append(article);
-  messagesEl.scrollTop = messagesEl.scrollHeight;
+function notify(message, tone = "success") {
+  toast.textContent = message;
+  toast.dataset.tone = tone;
+  toast.dataset.show = "true";
+  setTimeout(() => delete toast.dataset.show, 3200);
 }
 
-function openPaymentDialog(orderId) {
-  const order = state.session.placedOrders.find((entry) => entry.id === orderId);
-
-  if (!order) {
-    return;
-  }
-
-  state.paymentOrderId = orderId;
-  paymentSummary.textContent = `${order.code} - ${formatMoney(order.total)}`;
-  paymentEmail.value = localStorage.getItem(EMAIL_KEY) || "";
-  paymentPhone.value = localStorage.getItem(PHONE_KEY) || "";
-  renderPaymentMethods();
-  paymentDialog.showModal();
-}
-
-async function initializePayment(event) {
-  event.preventDefault();
-
-  try {
-    localStorage.setItem(PAYMENT_METHOD_KEY, paymentMethod.value);
-    localStorage.setItem(EMAIL_KEY, paymentEmail.value.trim());
-    localStorage.setItem(PHONE_KEY, paymentPhone.value.trim());
-    const data = await request("/api/payments/initialize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        deviceId: state.deviceId,
-        orderId: state.paymentOrderId,
-        email: paymentEmail.value,
-        phone: paymentPhone.value,
-        paymentMethod: paymentMethod.value,
-        currency: state.session.currency
-      })
-    });
-
-    if (data.authorizationUrl) {
-      window.location.href = data.authorizationUrl;
-      return;
-    }
-
-    if (data.session) {
-      state.session = data.session;
-      render();
-    }
-    paymentDialog.close();
-  } catch (error) {
-    paymentSummary.textContent = error.message;
-  }
-}
-
-async function updateCurrency(currency) {
-  const data = await request(`/api/chat/${encodeURIComponent(state.deviceId)}/currency`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ currency })
+function setBusy(element, busy) {
+  element.toggleAttribute("aria-busy", busy);
+  element.querySelectorAll("button, input, textarea, select").forEach((control) => {
+    if (!control.classList.contains("ghost")) control.disabled = busy;
   });
-  state.session = data.session;
-  render();
 }
 
-chatForm.addEventListener("submit", sendMessage);
-paymentForm.addEventListener("submit", initializePayment);
-cancelPayment.addEventListener("click", () => paymentDialog.close());
-paymentMethod.addEventListener("change", updatePaymentMethodFields);
-currencySelect.addEventListener("change", () => {
-  updateCurrency(currencySelect.value).catch((error) => addTemporaryBotError(error.message));
-});
-themeToggle.addEventListener("click", () => {
-  const currentTheme = document.documentElement.dataset.theme;
-  applyTheme(currentTheme === "dark" ? "light" : "dark");
+function saveSession(data) {
+  state.token = data.token;
+  state.user = data.user;
+  localStorage.setItem("eventful-token", data.token);
+  localStorage.setItem("eventful-user", JSON.stringify(data.user));
+  renderSession();
+}
+
+function renderSession() {
+  sessionLabel.textContent = state.user ? `${state.user.name} signed in as ${state.user.role}` : "Not signed in";
+  document.body.dataset.role = state.user?.role || "guest";
+  verifyForm.hidden = state.user?.role !== "creator";
+}
+
+function renderAuthMode() {
+  authModeButtons.forEach((button) => button.classList.toggle("active", button.dataset.authMode === state.authMode));
+  nameField.hidden = state.authMode === "login";
+  authSubmit.textContent = state.authMode === "login" ? "Login" : "Create account";
+}
+
+function renderConfig() {
+  if (!state.config) return;
+  systemStatus.innerHTML = `
+    <span data-live="${state.config.paystack.live}"><b>Paystack</b>${state.config.paystack.live ? "Secret key active" : "Local simulation - add PAYSTACK_SECRET_KEY"}${state.config.paystack.publicKeyConfigured ? " | public key set" : " | add PAYSTACK_PUBLIC_KEY"}</span>
+    <span data-live="${state.config.email.live}"><b>Email</b>${state.config.email.live ? "SMTP active" : "Dev outbox - add SMTP settings"}</span>
+  `;
+}
+
+function renderCurrencyOptions() {
+  currencySelect.innerHTML = state.currencies.map((currency) => `
+    <option value="${currency.code}" ${currency.code === "KES" ? "selected" : ""}>
+      ${currency.code} - ${currency.name}${currency.paystack ? "" : " (display only)"}
+    </option>
+  `).join("");
+  renderCurrencyNote();
+}
+
+function renderCurrencyNote() {
+  const currency = state.currencies.find((item) => item.code === currencySelect.value);
+  currencyNote.textContent = currency?.paystack
+    ? `${currency.code} can initialize Paystack checkout.`
+    : `${currency?.code || "This currency"} is available for East Africa event display, but Paystack checkout currently needs KES or USD here.`;
+  currencyNote.dataset.supported = String(Boolean(currency?.paystack));
+}
+
+function filteredEvents() {
+  const query = state.filter.trim().toLowerCase();
+  if (!query) return state.events;
+  return state.events.filter((event) => [event.title, event.description, event.category, event.venue, event.currency].join(" ").toLowerCase().includes(query));
+}
+
+function eventCard(event) {
+  const date = new Date(event.startsAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+  const paystackReady = ["KES", "USD", "NGN", "GHS", "ZAR", "XOF"].includes(event.currency);
+  const canPay = paystackReady && state.user?.role === "eventee";
+  const payLabel = !paystackReady ? "Unsupported currency" : state.user?.role === "eventee" ? "Pay with Paystack" : "Eventee login required";
+  return `
+    <article class="event-card">
+      <div class="event-media">
+        <span>${event.category.slice(0, 1).toUpperCase()}</span>
+      </div>
+      <div class="event-body">
+        <div class="event-topline">
+          <span>${event.category}</span>
+          <b>${date}</b>
+        </div>
+        <h3>${event.title}</h3>
+        <p>${event.description}</p>
+        <dl>
+          <div><dt>Venue</dt><dd>${event.venue}</dd></div>
+          <div><dt>Ticket</dt><dd>${money(event.price, event.currency)}</dd></div>
+          <div><dt>Capacity</dt><dd>${event.capacity}</dd></div>
+        </dl>
+        <div class="button-row">
+          <button data-attend="${event.id}" ${canPay ? "" : "disabled"}>${payLabel}</button>
+          <button class="secondary" data-share="${event.id}">Share</button>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderEvents() {
+  const events = filteredEvents();
+  eventsList.innerHTML = events.length ? events.map(eventCard).join("") : '<div class="empty">No events match this view yet.</div>';
+  document.querySelector("#event-count").textContent = state.events.length;
+}
+
+async function loadEvents() {
+  const data = await api("/api/events");
+  state.events = data.events;
+  renderEvents();
+}
+
+async function loadTickets() {
+  if (!state.token || state.user?.role !== "eventee") {
+    ticketsList.innerHTML = '<div class="empty">Sign in as an eventee to see tickets and QR passes.</div>';
+    document.querySelector("#ticket-count").textContent = "0";
+    document.querySelector("#scan-count").textContent = "0";
+    return;
+  }
+  const data = await api("/api/tickets/me");
+  state.tickets = data.tickets;
+  document.querySelector("#ticket-count").textContent = data.tickets.length;
+  document.querySelector("#scan-count").textContent = data.tickets.filter((ticket) => ticket.status === "checked_in").length;
+  ticketsList.innerHTML = data.tickets.length
+    ? data.tickets.map((ticket) => `
+      <article class="ticket-card">
+        <div>
+          <span>${ticket.status.replace("_", " ")}</span>
+          <b>${ticket.quantity} ticket${ticket.quantity > 1 ? "s" : ""}</b>
+        </div>
+        ${
+          ticket.qrCodeDataUrl
+            ? `<div class="qr-pass"><img src="${ticket.qrCodeDataUrl}" alt="Ticket QR code" /><button class="secondary" data-copy-qr="${ticket.id}">Copy QR payload</button></div>`
+            : "<small>Payment pending. QR unlocks after Paystack confirms the transaction.</small>"
+        }
+      </article>`).join("")
+    : '<div class="empty">No tickets yet. Buy a ticket from an event card.</div>';
+}
+
+async function loadOutbox() {
+  if (!state.token) {
+    outboxPanel.innerHTML = "";
+    return;
+  }
+  const data = await api("/api/notifications/outbox");
+  outboxPanel.innerHTML = data.emailLogs.length
+    ? `<article class="mini-card outbox"><b>Email activity</b>${data.emailLogs.slice(-5).reverse().map((email) => `<span>${email.status} via ${email.provider}: ${email.subject} to ${email.to}</span>`).join("")}</article>`
+    : "";
+}
+
+async function loadCreatorWorkspace() {
+  if (!state.token || state.user?.role !== "creator") {
+    state.creatorEvents = [];
+    state.attendees = [];
+    return null;
+  }
+  const data = await api("/api/events/mine");
+  state.creatorEvents = data.events;
+  state.attendees = data.attendees;
+  return data;
+}
+
+async function loadAnalytics() {
+  if (!state.token || state.user?.role !== "creator") {
+    analyticsPanel.innerHTML = '<div class="empty">Sign in as a creator to see revenue and check-in analytics.</div>';
+    return;
+  }
+  const [data, workspace] = await Promise.all([api("/api/analytics/creator"), loadCreatorWorkspace()]);
+  const attendees = workspace?.attendees || [];
+  analyticsPanel.innerHTML = `
+    <article class="metric-grid">
+      <span><b>${data.lifetime.attendees}</b> attendees</span>
+      <span><b>${data.lifetime.ticketsBought}</b> tickets</span>
+      <span><b>${data.lifetime.checkedIn}</b> scanned</span>
+      <span><b>${data.lifetime.revenue.toLocaleString()}</b> revenue</span>
+    </article>
+    ${data.events.map((event) => `<article class="mini-card"><b>${event.title}</b><span>${event.ticketsBought} sold | ${event.checkedIn} scanned | ${event.revenue.toLocaleString()} revenue</span></article>`).join("")}
+    <article class="mini-card attendee-list">
+      <b>Applications and attendees</b>
+      ${
+        attendees.length
+          ? attendees.map((attendee) => `
+              <span>
+                ${attendee.eventee?.name || "Unknown eventee"} applied for ${attendee.eventTitle}
+                | ${attendee.quantity} ticket${attendee.quantity > 1 ? "s" : ""}
+                | ${attendee.payment?.status || attendee.ticketStatus}
+              </span>
+            `).join("")
+          : "<span>No eventees have applied yet.</span>"
+      }
+    </article>
+  `;
+}
+
+async function loadCurrencies() {
+  const data = await api("/api/currencies");
+  state.currencies = data.eastAfrica;
+  renderCurrencyOptions();
+}
+
+async function loadConfig() {
+  state.config = await api("/api/config");
+  renderConfig();
+}
+
+async function refresh() {
+  await Promise.all([loadEvents(), loadTickets(), loadAnalytics(), loadOutbox()]);
+}
+
+async function handlePayment(eventId, button) {
+  button.disabled = true;
+  button.textContent = "Starting checkout";
+  const data = await api(`/api/events/${eventId}/attend`, { method: "POST", body: JSON.stringify({ quantity: 1 }) });
+  if (data.checkout?.simulated) {
+    await api(`/api/payments/${data.payment.reference}/confirm`, { method: "POST", body: "{}" });
+    notify("Local payment simulated. QR ticket generated.");
+    await refresh();
+    return;
+  }
+  notify("Redirecting to Paystack checkout...");
+  window.location.href = data.checkout.authorizationUrl;
+}
+
+async function openShareSheet(eventId) {
+  const data = await api(`/api/share/${eventId}`);
+  shareTitle.textContent = data.title;
+  shareText.textContent = data.text;
+  shareActions.innerHTML = `
+    <button type="button" data-native-share>Native share</button>
+    <button type="button" class="secondary" data-copy-share="${data.url}">Copy link</button>
+    ${Object.entries(data.links).map(([name, href]) => `<a href="${href}" target="_blank" rel="noopener">${name}</a>`).join("")}
+  `;
+  shareSheet.hidden = false;
+  shareSheet.dataset.url = data.url;
+  shareSheet.dataset.title = data.title;
+  shareSheet.dataset.text = data.text;
+}
+
+roleButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    roleButtons.forEach((candidate) => candidate.classList.toggle("active", candidate === button));
+    authForm.role.value = button.dataset.roleChoice;
+    authForm.name.value = button.dataset.roleChoice === "creator" ? "Amina Creator" : "Brian Eventee";
+    authForm.email.value = button.dataset.roleChoice === "creator" ? "creator@eventful.test" : "eventee@eventful.test";
+  });
 });
 
-loadTheme();
-state.deviceId = getDeviceId();
-showPaymentBanner();
-loadChat().catch((error) => addTemporaryBotError(error.message));
+authModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    state.authMode = button.dataset.authMode;
+    renderAuthMode();
+  });
+});
+
+demoButtons.forEach((button) => {
+  button.addEventListener("click", async () => {
+    setBusy(authForm, true);
+    try {
+      const data = await api("/api/auth/demo", { method: "POST", body: JSON.stringify({ role: button.dataset.demoLogin }) });
+      saveSession(data);
+      notify(`${data.user.role} demo login ready`);
+      await refresh();
+    } catch (error) {
+      notify(error.message, "error");
+    } finally {
+      setBusy(authForm, false);
+    }
+  });
+});
+
+authForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBusy(authForm, true);
+  try {
+    const body = Object.fromEntries(new FormData(authForm));
+    const data = state.authMode === "login"
+      ? await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: body.email, password: body.password }) })
+      : await api("/api/auth/register", { method: "POST", body: JSON.stringify(body) });
+    saveSession(data);
+    notify(state.authMode === "login" ? "Signed in" : "Account created");
+    await refresh();
+  } catch (error) {
+    notify(error.message, "error");
+  } finally {
+    setBusy(authForm, false);
+  }
+});
+
+loginButton.addEventListener("click", async () => {
+  setBusy(authForm, true);
+  try {
+    const body = Object.fromEntries(new FormData(authForm));
+    const data = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: body.email, password: body.password }) });
+    saveSession(data);
+    notify("Signed in");
+    await refresh();
+  } catch (error) {
+    notify(error.message, "error");
+  } finally {
+    setBusy(authForm, false);
+  }
+});
+
+logoutButton.addEventListener("click", async () => {
+  state.token = null;
+  state.user = null;
+  localStorage.removeItem("eventful-token");
+  localStorage.removeItem("eventful-user");
+  renderSession();
+  notify("Signed out");
+  await refresh();
+});
+
+eventForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBusy(eventForm, true);
+  try {
+    const body = Object.fromEntries(new FormData(eventForm));
+    body.reminderOptions = [{ offsetMinutes: Number(body.reminderMinutes), channel: "email", label: `${body.reminderMinutes} minutes before` }];
+    const data = await api("/api/events", { method: "POST", body: JSON.stringify(body) });
+    state.events = [data.event, ...state.events];
+    renderEvents();
+    notify(`${data.event.title} published`);
+    await loadAnalytics();
+    await openShareSheet(data.event.id);
+  } catch (error) {
+    notify(error.message, "error");
+  } finally {
+    setBusy(eventForm, false);
+  }
+});
+
+eventsList.addEventListener("click", async (event) => {
+  const attendId = event.target.dataset.attend;
+  const shareId = event.target.dataset.share;
+  if (attendId) {
+    try {
+      await handlePayment(attendId, event.target);
+    } catch (error) {
+      event.target.disabled = false;
+      event.target.textContent = "Pay with Paystack";
+      notify(error.message, "error");
+    }
+  }
+  if (shareId) {
+    try {
+      await openShareSheet(shareId);
+    } catch (error) {
+      notify(error.message, "error");
+    }
+  }
+});
+
+shareClose.addEventListener("click", () => {
+  shareSheet.hidden = true;
+});
+
+shareSheet.addEventListener("click", async (event) => {
+  if (event.target === shareSheet) {
+    shareSheet.hidden = true;
+    return;
+  }
+  const copyUrl = event.target.dataset.copyShare;
+  if (copyUrl) {
+    await navigator.clipboard?.writeText(copyUrl);
+    notify("Share link copied");
+  }
+  if (event.target.dataset.nativeShare !== undefined) {
+    if (navigator.share) {
+      await navigator.share({
+        title: shareSheet.dataset.title,
+        text: shareSheet.dataset.text,
+        url: shareSheet.dataset.url
+      });
+      notify("Share sheet opened");
+    } else {
+      await navigator.clipboard?.writeText(shareSheet.dataset.url || "");
+      notify("Native share is unavailable, link copied instead");
+    }
+  }
+});
+
+ticketsList.addEventListener("click", async (event) => {
+  const ticketId = event.target.dataset.copyQr;
+  if (!ticketId) return;
+  const ticket = state.tickets.find((candidate) => candidate.id === ticketId);
+  if (!ticket?.qrPayload) return;
+  await navigator.clipboard?.writeText(ticket.qrPayload);
+  notify("QR payload copied");
+});
+
+verifyForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBusy(verifyForm, true);
+  try {
+    const body = Object.fromEntries(new FormData(verifyForm));
+    const data = await api("/api/tickets/verify", { method: "POST", body: JSON.stringify(body) });
+    verifyResult.textContent = data.valid ? "Ticket verified. Eventee can access this event." : data.message;
+    verifyResult.dataset.supported = String(Boolean(data.valid));
+    notify("Ticket verified");
+    await loadAnalytics();
+  } catch (error) {
+    verifyResult.textContent = error.message;
+    verifyResult.dataset.supported = "false";
+    notify(error.message, "error");
+  } finally {
+    setBusy(verifyForm, false);
+  }
+});
+
+eventSearch.addEventListener("input", () => {
+  state.filter = eventSearch.value;
+  renderEvents();
+});
+
+currencySelect.addEventListener("change", renderCurrencyNote);
+
+const params = new URLSearchParams(window.location.search);
+if (params.get("status") === "paid") notify("Payment confirmed. Your QR ticket is ready.");
+
+renderSession();
+renderAuthMode();
+loadCurrencies()
+  .then(loadConfig)
+  .then(refresh)
+  .catch((error) => notify(error.message, "error"));

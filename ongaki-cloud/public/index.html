@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Ongaki Cloud MVP</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark">OC</span>
+        <div>
+          <strong>Ongaki Cloud</strong>
+          <small id="sideLabel">Client dashboard</small>
+        </div>
+      </div>
+      <nav>
+        <a href="/client">Client side</a>
+        <a href="/admin">Backend side</a>
+        <a href="/site/demo-api">Users side</a>
+      </nav>
+    </aside>
+
+    <main id="app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow" id="modeEyebrow">Local MVP</p>
+          <h1 id="pageTitle">Loading Ongaki Cloud</h1>
+        </div>
+        <button id="refreshButton" type="button">Refresh</button>
+      </header>
+
+      <div id="view"></div>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

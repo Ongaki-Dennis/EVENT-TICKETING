@@ -1,0 +1,35 @@
+name: Ongaki Cloud CI
+
+on:
+  pull_request:
+    paths:
+      - "ongaki-cloud/**"
+      - ".github/workflows/ongaki-cloud-ci.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "ongaki-cloud/**"
+      - ".github/workflows/ongaki-cloud-ci.yml"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.7.5
+      - name: Validate Terraform
+        run: |
+          terraform -chdir=ongaki-cloud/infra/terraform init -backend=false
+          terraform -chdir=ongaki-cloud/infra/terraform validate
+      - name: Validate Kubernetes manifests
+        uses: instrumenta/kubeval-action@master
+        with:
+          files: ongaki-cloud/infra/kubernetes
+      - name: Validate OpenAPI
+        uses: char0n/swagger-editor-validate@v1
+        with:
+          definition-file: ongaki-cloud/docs/api/openapi.yaml
+

@@ -3,90 +3,157 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AMSTERDON RESTAURANT ChatBot</title>
+    <title>Eventful</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <main class="app-shell">
-      <section class="chat-card" aria-label="Restaurant chatbot">
-        <header class="chat-header">
-          <div>
-            <p class="eyebrow">AMSTERDON RESTAURANT</p>
-            <h1>Restaurant ChatBot</h1>
-          </div>
-          <div class="header-actions">
-            <button id="theme-toggle" class="theme-toggle" type="button" aria-pressed="false">
-              Dark mode
-            </button>
-            <div class="status-pill">Online</div>
-          </div>
-        </header>
+    <header class="app-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">E</span>
+        <span>Eventful</span>
+      </a>
+      <nav>
+        <a href="#events">Events</a>
+        <a href="#creator">Creator</a>
+        <a href="#tickets">Tickets</a>
+        <a href="#login">Login</a>
+        <a href="/api/docs">API Docs</a>
+      </nav>
+    </header>
 
-        <section id="payment-banner" class="payment-banner" hidden></section>
-
-        <section class="currency-bar">
-          <label for="currency-select">Currency</label>
-          <select id="currency-select"></select>
-        </section>
-
-        <section id="messages" class="messages" aria-live="polite"></section>
-
-        <form id="chat-form" class="chat-form">
-          <label class="sr-only" for="message-input">Send an option</label>
-          <input
-            id="message-input"
-            maxlength="120"
-            autocomplete="off"
-            placeholder="Type 1, 99, 98, 97, 0..."
-            required
-          />
-          <button type="submit">Send</button>
-        </form>
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Ticketing, access, analytics</p>
+          <h1>Eventful</h1>
+          <p>
+            Create shareable events, sell tickets through Paystack, issue QR passes,
+            manage reminders, and track attendance from one practical workspace.
+          </p>
+        </div>
+        <div class="hero-stats" aria-label="Platform status">
+          <span><b id="event-count">0</b> published events</span>
+          <span><b id="ticket-count">0</b> tickets issued</span>
+          <span><b id="scan-count">0</b> QR scans</span>
+        </div>
       </section>
 
-      <aside class="order-panel">
-        <section>
-          <div class="panel-heading">
-            <p class="eyebrow">Current</p>
-            <h2>Order</h2>
+      <section class="workspace">
+        <div id="login" class="auth-panel">
+          <form id="auth-form">
+            <div class="auth-hero">
+              <p class="eyebrow">Secure access</p>
+              <h2>Welcome back to Eventful</h2>
+              <p>Sign in as a creator to manage events, or as an eventee to discover, pay, and enter with QR passes.</p>
+            </div>
+            <div class="auth-tabs" aria-label="Authentication mode">
+              <button type="button" class="active" data-auth-mode="login">Login</button>
+              <button type="button" data-auth-mode="register">Register</button>
+            </div>
+            <div class="role-toggle" aria-label="Choose role">
+              <button type="button" data-role-choice="creator" class="active">Creator</button>
+              <button type="button" data-role-choice="eventee">Eventee</button>
+            </div>
+            <label data-name-field>Name <input name="name" value="Amina Creator" /></label>
+            <label>Email <input name="email" type="email" value="creator@eventful.test" required /></label>
+            <label>Password <input name="password" type="password" value="password123" required /></label>
+            <input name="role" type="hidden" value="creator" />
+            <div class="button-row">
+              <button type="submit" id="auth-submit">Login</button>
+              <button type="button" id="login-button" hidden>Login</button>
+              <button type="button" class="ghost" id="logout-button">Logout</button>
+            </div>
+            <div class="button-row">
+              <button type="button" class="secondary" data-demo-login="creator">Demo Creator</button>
+              <button type="button" class="secondary" data-demo-login="eventee">Demo Eventee</button>
+            </div>
+            <p id="session-label" class="muted">Not signed in</p>
+          </form>
+          <div class="status-card">
+            <p class="eyebrow">System status</p>
+            <div id="system-status" class="status-grid"></div>
           </div>
-          <div id="current-order" class="order-list"></div>
-        </section>
+        </div>
 
-        <section>
-          <div class="panel-heading">
-            <p class="eyebrow">Placed</p>
-            <h2>History</h2>
-          </div>
-          <div id="order-history" class="order-list"></div>
+        <section id="creator" class="creator-panel">
+          <form id="event-form">
+            <div class="section-title">
+              <p class="eyebrow">Creator</p>
+              <h2>Publish an event</h2>
+            </div>
+            <label>Title <input name="title" value="Lagos Culture Night" required /></label>
+            <label>Description <textarea name="description" required>An evening of music, food, theater, and conversation.</textarea></label>
+            <div class="form-grid">
+              <label>Category <input name="category" value="Culture" required /></label>
+              <label>Venue <input name="venue" value="Freedom Park" required /></label>
+              <label>Starts <input name="startsAt" type="datetime-local" required /></label>
+              <label>Ends <input name="endsAt" type="datetime-local" required /></label>
+              <label>Price <input name="price" type="number" value="7500" min="0" /></label>
+              <label>Currency <select name="currency" id="currency-select"></select></label>
+              <label>Capacity <input name="capacity" type="number" value="250" min="1" /></label>
+              <label>Reminder minutes <input name="reminderMinutes" type="number" value="1440" min="5" /></label>
+            </div>
+            <p id="currency-note" class="note"></p>
+            <button type="submit">Create Event</button>
+          </form>
         </section>
-      </aside>
+      </section>
+
+      <section class="story-band">
+        <p class="eyebrow">Passport to moments</p>
+        <h2>Concerts, theater, sports, culture, and gatherings that feel alive.</h2>
+        <p>Eventful helps creators launch memorable experiences and helps eventees discover, pay, share, receive reminders, and enter with confidence.</p>
+      </section>
+
+      <section id="events" class="events-section">
+        <div class="section-bar">
+          <div class="section-title">
+            <p class="eyebrow">Eventees</p>
+            <h2>Available events</h2>
+          </div>
+          <label class="search-box">Search <input id="event-search" placeholder="Concert, theater, Nairobi..." /></label>
+        </div>
+        <div id="events-list" class="events-list"></div>
+      </section>
+
+      <section id="tickets" class="workspace lower">
+        <section class="panel">
+          <div class="section-title">
+            <p class="eyebrow">Tickets</p>
+            <h2>My passes</h2>
+          </div>
+          <div id="tickets-list" class="stack"></div>
+          <div id="outbox-panel" class="stack"></div>
+        </section>
+        <section class="panel">
+          <div class="section-title">
+            <p class="eyebrow">Creator analytics</p>
+            <h2>Performance</h2>
+          </div>
+          <form id="verify-form" class="verify-form">
+            <label>QR payload <textarea name="qrPayload" placeholder="Paste scanned QR payload here"></textarea></label>
+            <button type="submit">Verify QR Ticket</button>
+            <p id="verify-result" class="note">Only creators can verify tickets for events they own.</p>
+          </form>
+          <div id="analytics-panel" class="stack"></div>
+        </section>
+      </section>
     </main>
 
-    <dialog id="payment-dialog" class="payment-dialog">
-      <form id="payment-form" method="dialog">
-        <h2>Choose payment method</h2>
-        <p id="payment-summary"></p>
-        <label>
-          Payment method
-          <select id="payment-method"></select>
-        </label>
-        <label>
-          Email address
-          <input id="payment-email" type="email" placeholder="customer@example.com" required />
-        </label>
-        <label id="payment-phone-wrap" hidden>
-          Phone number
-          <input id="payment-phone" type="tel" placeholder="+254712345678" />
-        </label>
-        <p id="payment-method-note" class="payment-method-note"></p>
-        <menu>
-          <button type="button" id="cancel-payment" class="secondary-button">Cancel</button>
-          <button type="submit">Continue</button>
-        </menu>
-      </form>
-    </dialog>
-
+    <div id="toast" role="status"></div>
+    <div id="share-sheet" class="share-sheet" hidden>
+      <div class="share-panel" role="dialog" aria-modal="true" aria-labelledby="share-title">
+        <div class="share-head">
+          <div>
+            <p class="eyebrow">Share event</p>
+            <h2 id="share-title">Eventful</h2>
+          </div>
+          <button type="button" class="ghost" id="share-close">Close</button>
+        </div>
+        <p id="share-text" class="muted"></p>
+        <div id="share-actions" class="share-actions"></div>
+      </div>
+    </div>
     <script src="/app.js"></script>
   </body>
 </html>

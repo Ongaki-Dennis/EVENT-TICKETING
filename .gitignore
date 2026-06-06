@@ -1,4 +1,7 @@
 node_modules/
 npm-debug.log*
 .env
+dist/
+eventful-ui-check.png
+data/eventful-db.json
 data/restaurant-sessions.json
