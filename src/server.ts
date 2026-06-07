@@ -2,20 +2,14 @@ import { createApp } from "./app";
 
 const app = createApp();
 
-/**
- * LOCAL ENVIRONMENT
- * Only start a server if we're NOT on Vercel
- */
+// Local only
 if (!process.env.VERCEL) {
-  const PORT = Number(process.env.PORT) || 3000;
+  const PORT = Number(process.env.PORT || 3000);
 
   app.listen(PORT, () => {
-    console.log(`Server running locally on http://localhost:${PORT}`);
+    console.log(`Local server running on http://localhost:${PORT}`);
   });
 }
 
-/**
- * VERCEL ENVIRONMENT
- * Export the app as default (serverless function entry)
- */
+// Vercel uses this
 export default app;
