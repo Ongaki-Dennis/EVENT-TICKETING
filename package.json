@@ -2,7 +2,7 @@
   "name": "eventful",
   "version": "1.0.0",
   "description": "Event ticketing platform with auth, Paystack payments, QR tickets, reminders, analytics, caching, and API docs.",
-  "main": "server.js",
+  "main": "dist/src/server.js",
   "scripts": {
     "start": "node dist/src/server.js",
     "dev": "tsx watch src/server.ts",
@@ -23,6 +23,7 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@vercel/node": "^5.8.12",
     "axios": "^1.16.1",
     "dotenv": "^17.4.2",
     "express": "^4.22.2",

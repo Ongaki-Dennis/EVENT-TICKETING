@@ -3,11 +3,10 @@ import express from "express";
 import path from "node:path";
 import swaggerUi from "swagger-ui-express";
 
-import { TtlCache } from "./cache";
 import { JsonStore } from "./db";
 import { swaggerDocument } from "./docs";
 import { emailConfigured } from "./email";
-import { rateLimit, requireAuth } from "./middleware";
+import { rateLimit } from "./middleware";
 import { hashPassword, signToken, verifyPassword } from "./security";
 
 const required = (value: unknown) =>
@@ -34,7 +33,8 @@ export function createApp(store = new JsonStore()) {
   app.set("trust proxy", 1);
   app.use(express.json({ limit: "1mb" }));
   app.use(rateLimit());
-  app.use(express.static(path.join(process.cwd(), "public")));
+
+  // Only serve static files if directory exists (safer for serverless)
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
   app.get("/api/health", (_req, res) => {
@@ -104,10 +104,12 @@ export function createApp(store = new JsonStore()) {
   });
 
   app.get("/api/config", (_req, res) => {
+    const emailReady = emailConfigured();
+
     res.json({
       email: {
-        live: emailConfigured(),
-        mode: emailConfigured() ? "smtp" : "dev",
+        live: emailReady,
+        mode: emailReady ? "smtp" : "dev",
       },
     });
   });
