@@ -1,9 +1,5 @@
-import express from "express";
+import { createApp } from "../src/app";
 
-const app = express();
-
-app.get("/api/health", (_req, res) => {
-  res.json({ ok: true });
-});
+const app = createApp();
 
 export default app;
