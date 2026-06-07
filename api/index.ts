@@ -2,4 +2,6 @@ import { createApp } from "../src/app";
 
 const app = createApp();
 
-export default app;
+export default (req, res) => {
+  app(req, res);
+};
