@@ -28,22 +28,14 @@ function sanitizeUser(user: any) {
 export function createApp(store = new JsonStore()) {
   const app = express();
 
-  const cache = new TtlCache<unknown>(45_000);
   const authSecret =
     process.env.AUTH_SECRET || "eventful-local-dev-secret";
-
-  const publicUrl =
-    process.env.PUBLIC_URL ||
-    `http://localhost:${process.env.PORT || 3000}`;
 
   app.set("trust proxy", 1);
   app.use(express.json({ limit: "1mb" }));
   app.use(rateLimit());
   app.use(express.static(path.join(process.cwd(), "public")));
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
-
-  const auth = (roles?: string[]) =>
-    requireAuth(authSecret, store, roles);
 
   app.get("/api/health", (_req, res) => {
     res.json({ ok: true, service: "eventful" });
@@ -55,10 +47,7 @@ export function createApp(store = new JsonStore()) {
     const isValidRole = role === "creator" || role === "eventee";
 
     if (![name, email, password].every(required) || !isValidRole) {
-      return res.status(400).json({
-        message: "Name, email, password, and a valid role are required",
-        received: { name, email, role },
-      });
+      return res.status(400).json({ message: "Invalid input" });
     }
 
     const db = store.read();
@@ -99,13 +88,8 @@ export function createApp(store = new JsonStore()) {
         u.email === String(req.body.email || "").toLowerCase()
     );
 
-    if (
-      !user ||
-      !verifyPassword(String(req.body.password || ""), user.passwordHash)
-    ) {
-      return res
-        .status(401)
-        .json({ message: "Invalid email or password" });
+    if (!user || !verifyPassword(req.body.password, user.passwordHash)) {
+      return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const token = signToken(
@@ -123,17 +107,10 @@ export function createApp(store = new JsonStore()) {
     res.json({
       email: {
         live: emailConfigured(),
-        mode: emailConfigured() ? "smtp" : "dev-outbox",
+        mode: emailConfigured() ? "smtp" : "dev",
       },
     });
   });
-
-  app.use(
-    (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      console.error(err);
-      res.status(500).json({ message: err.message || "Server error" });
-    }
-  );
 
   return app;
 }
