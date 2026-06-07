@@ -2,7 +2,7 @@ import { createApp } from "./app";
 
 const app = createApp();
 
-// Local only
+// ONLY run locally
 if (!process.env.VERCEL) {
   const PORT = Number(process.env.PORT || 3000);
 
@@ -11,5 +11,5 @@ if (!process.env.VERCEL) {
   });
 }
 
-// Vercel uses this
+// IMPORTANT: export app for Vercel
 export default app;
