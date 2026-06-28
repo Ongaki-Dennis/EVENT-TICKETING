@@ -2,12 +2,13 @@
   "name": "eventful",
   "version": "1.0.0",
   "description": "Event ticketing platform with auth, Paystack payments, QR tickets, reminders, analytics, caching, and API docs.",
-  "main": "dist/src/server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node dist/src/server.js",
-    "dev": "tsx watch src/server.ts",
+    "dev": "npm run build && node --watch dist/src/server.js",
+    "prestart": "npm run build",
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run --pool=threads --exclude \"dist/**\""
+    "start": "node server.js",
+    "test": "vitest run --pool=threads --testTimeout=10000"
   },
   "keywords": [
     "events",
@@ -23,12 +24,12 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@vercel/node": "^5.8.12",
     "axios": "^1.16.1",
     "dotenv": "^17.4.2",
     "express": "^4.22.2",
     "nodemailer": "^8.0.10",
     "qrcode": "^1.5.4",
+    "serverless-http": "^4.0.0",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
@@ -36,7 +37,6 @@
     "@types/node": "^25.9.1",
     "@types/nodemailer": "^8.0.0",
     "@types/qrcode": "^1.5.6",
-    "@types/supertest": "^7.2.0",
     "@types/swagger-ui-express": "^4.1.8",
     "supertest": "^7.2.2",
     "tsx": "^4.22.4",

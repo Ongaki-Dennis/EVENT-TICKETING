@@ -40,6 +40,8 @@ If `PAYSTACK_SECRET_KEY` is omitted, Eventful simulates payment confirmation for
 
 If SMTP settings are omitted, Eventful writes email activity to a dev outbox available through `/api/notifications/outbox`. With SMTP configured, ticket confirmations and due reminder emails are sent through Nodemailer.
 
+If you prefer Mailgun, set `MAILGUN_API_KEY`, `MAILGUN_DOMAIN`, and `MAILGUN_FROM`. Eventful will send through Mailgun's API when SMTP values are not present.
+
 ## Demo Login
 
 The browser UI includes `Demo Creator` and `Demo Eventee` buttons. They call `/api/auth/demo`, which creates or refreshes stable demo users:

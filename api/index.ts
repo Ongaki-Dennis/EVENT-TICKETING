@@ -1,7 +1,9 @@
+import "dotenv/config";
+import serverless from "serverless-http";
 import { createApp } from "../src/app";
 
+// Create the Express app
 const app = createApp();
 
-export default (req, res) => {
-  app(req, res);
-};
+// Export as Vercel serverless function
+export default serverless(app);

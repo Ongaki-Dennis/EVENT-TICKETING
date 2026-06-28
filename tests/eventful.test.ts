@@ -11,6 +11,17 @@ function testApp() {
   return createApp(store);
 }
 
+function emptyDatabase() {
+  return {
+    users: [],
+    events: [],
+    tickets: [],
+    payments: [],
+    reminders: [],
+    emailLogs: []
+  };
+}
+
 async function register(app: ReturnType<typeof createApp>, role: "creator" | "eventee", email: string) {
   const response = await request(app)
     .post("/api/auth/register")
@@ -36,6 +47,19 @@ describe("Eventful API", () => {
       .send({ email: "creator@eventful.test", password: "password123" })
       .expect(200);
     expect(loginResponse.body.user.role).toBe("creator");
+  });
+
+  it("seeds the default demo accounts on a fresh store so login works immediately", async () => {
+    const store = new JsonStore(path.join(os.tmpdir(), `eventful-${crypto.randomUUID()}.json`));
+    store.reset(emptyDatabase());
+    const app = createApp(store);
+
+    const response = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "creator@eventful.test", password: "password123" })
+      .expect(200);
+
+    expect(response.body.user.email).toBe("creator@eventful.test");
   });
 
   it("registers creators, publishes events, sells tickets, generates QR codes, and verifies entry", async () => {

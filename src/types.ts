@@ -81,7 +81,7 @@ export interface EmailLog {
   subject: string;
   html: string;
   status: "sent" | "queued";
-  provider: "smtp" | "dev-outbox";
+  provider: "smtp" | "mailgun" | "dev-outbox";
   messageId?: string;
   createdAt: string;
 }

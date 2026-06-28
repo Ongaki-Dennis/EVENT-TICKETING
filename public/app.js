@@ -96,6 +96,15 @@ function renderAuthMode() {
   authModeButtons.forEach((button) => button.classList.toggle("active", button.dataset.authMode === state.authMode));
   nameField.hidden = state.authMode === "login";
   authSubmit.textContent = state.authMode === "login" ? "Login" : "Create account";
+  authForm.role.value = authForm.role.value || "creator";
+}
+
+function getAuthPayload() {
+  const email = String(authForm.email.value || "").trim();
+  const password = String(authForm.password.value || "").trim();
+  const role = String(authForm.role.value || "creator").trim();
+  const name = String(authForm.name.value || "").trim();
+  return { name, email, password, role };
 }
 
 function renderConfig() {
@@ -334,7 +343,13 @@ authForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   setBusy(authForm, true);
   try {
-    const body = Object.fromEntries(new FormData(authForm));
+    const body = getAuthPayload();
+    if (state.authMode === "register" && (!body.name || !body.email || !body.password || !["creator", "eventee"].includes(body.role))) {
+      throw new Error("Please fill in your name, email, password, and choose Creator or Eventee before registering.");
+    }
+    if (state.authMode === "login" && (!body.email || !body.password)) {
+      throw new Error("Please enter your email and password.");
+    }
     const data = state.authMode === "login"
       ? await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: body.email, password: body.password }) })
       : await api("/api/auth/register", { method: "POST", body: JSON.stringify(body) });
@@ -351,7 +366,10 @@ authForm.addEventListener("submit", async (event) => {
 loginButton.addEventListener("click", async () => {
   setBusy(authForm, true);
   try {
-    const body = Object.fromEntries(new FormData(authForm));
+    const body = getAuthPayload();
+    if (!body.email || !body.password) {
+      throw new Error("Please enter your email and password.");
+    }
     const data = await api("/api/auth/login", { method: "POST", body: JSON.stringify({ email: body.email, password: body.password }) });
     saveSession(data);
     notify("Signed in");
